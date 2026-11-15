@@ -16,5 +16,16 @@ for (const [name, f] of Object.entries(FIXTURES)) {
   else { pass++; console.log(`✓ ${name}  (${out.status}: ${out.candidates.map((c) => c.ux_skill).join(", ") || "no candidates"})`); }
   if (process.env.VERBOSE) console.log(JSON.stringify(out, null, 2));
 }
+
+const sparkle = await findProof({ answers: FIXTURES.sparkleclean_new_website.answers, title: FIXTURES.sparkleclean_new_website.title });
+const sparkleInfo = sparkle.candidates.find((candidate) => candidate.ux_skill === "information_architecture");
+if (!sparkleInfo) { fail++; console.log("✗ sparkleclean_new_website regression\n  - missing information architecture candidate"); }
+else {
+  const problems = [];
+  if (sparkleInfo.could_become !== "case_study") problems.push("new project was presented as a before-and-after redesign");
+  if (!sparkleInfo.missing.includes("How did you decide what information visitors needed?")) problems.push("new project follow-up did not ask about visitors' information needs");
+  if (problems.length) { fail++; console.log(`✗ sparkleclean_new_website regression\n  - ${problems.join("\n  - ")}`); }
+  else { pass++; console.log("✓ sparkleclean_new_website regression  (new project wording)"); }
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
