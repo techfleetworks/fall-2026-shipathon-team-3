@@ -22,6 +22,17 @@ export const FIXTURES = {
       "Not sure, I left soon after.",
     ],
   },
+  sparkleclean_new_website: {
+    expect: ["ok"],
+    title: "Cleaning business owner",
+    answers: [
+      "Creating a new website for SparkleClean.",
+      "People looking for home cleaning services who needed to understand the services and how to get a quote.",
+      "I created the service pages and organized the information into sections for each type of cleaning.",
+      "I decided to put the quote form on every service page because visitors would need a clear next step.",
+      "I hope the website helps visitors understand the services and ask for a quote.",
+    ],
+  },
   thin_input: { expect: ["needs_more_detail"], title: "Teacher", answers: ["Teaching.", "Kids.", "I taught them.", "", ""] },
   one_thread: {
     expect: ["too_few_candidates", "ok"],
