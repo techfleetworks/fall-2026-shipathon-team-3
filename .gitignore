@@ -1,0 +1,14 @@
+# Environment files (keep templates such as .env.example tracked)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Vercel project metadata and build output
+.vercel/
+
+# Logs
+*.log
+logs/

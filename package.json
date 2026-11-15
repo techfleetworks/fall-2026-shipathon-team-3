@@ -1,0 +1,13 @@
+{
+  "name": "proof-from-past-work",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Catalyst Cup Shipathon MVP #1: turn one piece of past work into proof, in your own words.",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node tests/run-tests.js",
+    "test:ai": "node tests/spike-ai.js"
+  },
+  "engines": { "node": ">=18" }
+}
