@@ -232,3 +232,125 @@ main.download { max-width: none; padding: 56px 210px 64px; }
 
 /* Headings get focus on screen change for screen readers; no ring needed there */
 h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
+
+/* ---------- Home (HOME-DESIGN.md) ---------- */
+main.home { max-width: none; padding: 0; }
+.home h1, .home h2, .home h3 { margin: 0; }
+.home p { max-width: none; margin: 0; }
+.display { font: 600 52px/56px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; }
+.t-h1 { font: 600 36px/42px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; }
+.t-h2 { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; }
+.body-lg { font: 400 18px/29px var(--font-body); color: var(--ink-soft); }
+.body-lg.muted { color: var(--muted-foreground); }
+.home-eyebrow { color: var(--primary); }
+a.btn { display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: var(--radius-md); border: 2px solid var(--input); background: var(--card); color: var(--foreground); font: 600 15px/1 var(--font-body); text-decoration: none; }
+.home-section { padding: 80px 0; }
+.home-inner { max-width: 1280px; margin: 0 auto; padding: 0 120px; }
+.home-brand { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--foreground); }
+
+/* 1. Navigation */
+.home-nav { background: var(--card); padding: 20px 0; }
+.home-nav-inner { max-width: 1280px; margin: 0 auto; padding: 0 120px; display: flex; align-items: center; gap: 24px; }
+.home-nav-left { flex: 1; height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #c9c9c5; }
+.home-links { display: flex; gap: 24px; }
+.home-links a { font: 400 14px/21px var(--font-body); color: var(--foreground); text-decoration: none; }
+.home-links a:hover, a.btn:hover { text-decoration: underline; }
+
+/* 2. Hero */
+.hero .home-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.hero-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
+.notice-box { background: var(--secondary); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.notice-title { font: 600 16px/26px var(--font-body); color: var(--foreground); }
+.notice-box p:last-child { font-size: 14px; line-height: 21px; color: var(--ink-soft); }
+.home-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-note { color: var(--muted-foreground); }
+.hero-panel { background: var(--secondary); border-radius: var(--radius-xl); padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.hero-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.hero-card-labels { display: flex; justify-content: space-between; gap: 12px; }
+.hero-card .t-h1 { color: var(--foreground); }
+.ex-row { display: flex; align-items: center; gap: 12px; }
+.ex-box { flex: 1; background: var(--proof-ground); border-radius: var(--radius-md); padding: 12px; font-size: 14px; line-height: 21px; color: var(--foreground); }
+.ex-row .chip { align-self: center; flex: none; }
+.green-box { background: var(--accent); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--accent-foreground); font-size: 14px; line-height: 21px; }
+.green-box .label { color: var(--accent-foreground); }
+.hero-tagline { color: var(--muted-foreground); }
+
+/* 3. Promises */
+.home-section.promises { background: var(--secondary); padding: 40px 0; }
+.promises .home-inner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
+.promise { display: flex; flex-direction: column; gap: 8px; }
+.promise p { font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
+.promise.center { text-align: center; }
+.promise.right { text-align: right; }
+
+/* 4. How it works */
+.how .home-inner, .approach .home-inner { display: flex; flex-direction: column; gap: 40px; }
+.how-intro { display: flex; flex-direction: column; gap: 12px; }
+.steps-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.step-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 24px; min-height: 289px; display: flex; flex-direction: column; gap: 24px; }
+.step-num { font: 600 36px/42px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--primary); }
+.step-body { flex: 1; color: var(--ink-soft); }
+.step-card .small { color: var(--muted-foreground); }
+
+/* 5. Example guide */
+.home-section.example { background: var(--secondary); }
+.example .home-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.example-copy { display: flex; flex-direction: column; gap: 24px; }
+.experience-group { display: flex; flex-direction: column; gap: 12px; }
+.experience-group .small, .example-card .small { color: var(--muted-foreground); }
+.example-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+.show-item { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.show-line { color: var(--foreground); }
+.ground-box { background: var(--proof-ground); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 21px; color: var(--ink-soft); }
+.label.dark { color: var(--foreground); }
+
+/* 6. Our approach */
+.approach-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.approach-copy { display: flex; flex-direction: column; gap: 20px; }
+.principles { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 24px; }
+.principle { display: flex; gap: 20px; }
+.home-num { color: var(--primary); }
+.principle-text { display: flex; flex-direction: column; gap: 8px; }
+.principle-text p { color: var(--muted-foreground); }
+.limits-box { background: var(--secondary); border-radius: var(--radius-md); padding: 24px; display: flex; align-items: center; gap: 24px; }
+.limits-box p { font-size: 14px; line-height: 21px; color: var(--ink-soft); }
+
+/* 7. Questions */
+.home-section.questions { background: var(--card); }
+.questions .home-inner { display: grid; grid-template-columns: 320px 1fr; gap: 40px; }
+.faq-head { display: flex; flex-direction: column; gap: 20px; }
+.faq-list { display: flex; flex-direction: column; gap: 24px; }
+.faq-item { display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.faq-item p { color: var(--muted-foreground); }
+
+/* 8. Start invitation */
+.invite-box { background: var(--primary); color: var(--primary-foreground); border-radius: var(--radius-xl); padding: 40px; display: flex; align-items: center; gap: 40px; }
+.invite-copy { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+.invite-copy h2, .invite-copy .label { color: var(--primary-foreground); }
+.invite-action { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.invite-action p { font-size: 14px; line-height: 21px; color: var(--primary-foreground); }
+
+/* 9. Footer */
+.home-footer { background: var(--secondary); padding: 40px 0; }
+.home-footer .home-inner { display: flex; flex-direction: column; gap: 24px; }
+.home-footer p { margin: 0; max-width: none; }
+.home-footer-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-footer .small { color: var(--muted-foreground); }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+@media (max-width: 960px) {
+  .home-inner, .home-nav-inner { padding: 0 24px; }
+  .home-section, .home-section.hero { padding: 48px 0; }
+  .home-section.promises { padding: 32px 0; }
+  .hero .home-inner, .promises .home-inner, .steps-grid, .example .home-inner, .approach-cols, .questions .home-inner { grid-template-columns: 1fr; }
+  .promise.center, .promise.right { text-align: left; }
+  .display { font-size: 38px; line-height: 44px; }
+  .limits-box, .invite-box, .home-footer-row { flex-direction: column; align-items: flex-start; }
+  .invite-action { align-items: flex-start; }
+  .step-card { min-height: 0; }
+}
+@media (max-width: 640px) {
+  .home-links { display: none; }
+}

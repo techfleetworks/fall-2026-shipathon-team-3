@@ -70,25 +70,127 @@ function show(nodes, step, layout = "", { noTop = false } = {}) {
   else mainEl.focus({ preventScroll: true });
 }
 
-// ---------- Welcome ----------
+// ---------- Home ----------
+const PRODUCT_NAME = "Proof from past work";
+
 function renderWelcome() {
-  show([
-    h("h1", {}, "Turn one piece of past work into proof an employer can judge"),
-    h("p", { class: "lede" }, "You already did real work before UX. This tool helps you find the parts that show how you think, using only your own words."),
-    h("p", { class: "voice hero-voice" },
-      h("mark", {}, "“I watched the returns desk for a week and wrote down where people got stuck.”")),
-    h("p", { class: "small" }, "A store manager’s sentence like this one already shows user research."),
-    h("ol", { class: "steps" },
-      h("li", {}, "Describe one piece of past work by answering five short questions."),
-      h("li", {}, "See which parts could become proof, and why employers care."),
-      h("li", {}, "Keep what’s accurate, fill in the gaps, and take it with you.")),
-    h("div", { class: "honest" },
-      h("p", {}, "It takes about 30 minutes here. Finishing a full portfolio piece takes a few more hours on your own."),
-      h("p", {}, "Free. No sign-up needed. It doesn’t save anything, so copy or download your proof before you leave."),
-      h("p", {}, "It can make your proof clearer. It can’t promise interviews or jobs.")),
-    h("div", { class: "actions" },
-      h("button", { class: "primary", onclick: () => renderDescribe() }, "Start with one piece of work")),
-  ]);
+  const start = (cls = "primary") => h("button", { class: cls, type: "button", onclick: () => renderDescribe() }, "Start");
+  const chip = (name) => h("p", { class: "chip" }, h("span", { class: "chip-kicker" }, "UX skill"), h("span", { class: "chip-name" }, name));
+  const eyebrow = (text) => h("p", { class: "label home-eyebrow" }, text);
+  const section = (cls, id, ...kids) => h("section", { class: `home-section ${cls}`, id }, h("div", { class: "home-inner" }, ...kids));
+
+  const nav = h("header", { class: "home-nav" },
+    h("div", { class: "home-nav-inner" },
+      h("div", { class: "home-nav-left" },
+        h("span", { class: "home-brand" }, PRODUCT_NAME),
+        h("nav", { class: "home-links", "aria-label": "Sections" },
+          h("a", { href: "#how-it-works" }, "How it works"),
+          h("a", { href: "#example-guide" }, "Example guide"),
+          h("a", { href: "#our-approach" }, "Our approach"))),
+      start()));
+
+  const hero = section("hero", "home-top",
+    h("div", { class: "hero-copy" },
+      eyebrow("For career changers trained in UX, not yet hired"),
+      h("h1", { class: "display" }, "Your past work already counts. Build a guide to your UX skills."),
+      h("p", { class: "body-lg" }, "Tell us about real work from your previous field. We’ll show how it connects to UX, with the reasoning, and you keep only what’s accurate."),
+      h("div", { class: "notice-box" },
+        h("p", { class: "notice-title" }, "We don’t save your work"),
+        h("p", {}, "Copy or download your guide for your own records before closing or refreshing this page.")),
+      h("div", { class: "home-buttons" }, start(), h("a", { class: "btn", href: "#example-guide" }, "See an example")),
+      h("p", { class: "small hero-note" }, "No cost. Just your story.")),
+    h("div", { class: "hero-visual" },
+      h("div", { class: "hero-panel" },
+        h("div", { class: "hero-card" },
+          h("div", { class: "hero-card-labels" }, h("p", { class: "label" }, "Example guide"), h("p", { class: "label" }, "01 / Retail")),
+          h("h2", { class: "t-h1" }, "Redesigning how new staff learn the register"),
+          h("p", { class: "small" }, "Retail supervisor → UX evidence"),
+          h("div", { class: "ex-row" }, h("p", { class: "ex-box" }, "Asked new staff where they got stuck"), chip("User research")),
+          h("div", { class: "ex-row" }, h("p", { class: "ex-box" }, "Rewrote training as a checklist"), chip("Content design")),
+          h("div", { class: "green-box" },
+            h("p", { class: "label" }, "The connection, not just the label."),
+            h("p", {}, "You learned where people struggled, then made the instructions easier to use."))),
+        h("p", { class: "label hero-tagline" }, "Your experience. Visible connections. Nothing invented."))));
+
+  const promise = (align, title, text) => h("div", { class: `promise ${align}` }, h("h2", { class: "t-h2" }, title), h("p", {}, text));
+  const promises = h("section", { class: "home-section promises" }, h("div", { class: "home-inner" },
+    promise("left", "At your own pace", "Short tasks. Room to think."),
+    promise("center", "0 invented details", "Every line starts with your real work."),
+    promise("right", "You stay in control", "Keep only the connections that fit.")));
+
+  const step = (num, title, body, note) => h("li", { class: "step-card" },
+    h("p", { class: "step-num" }, num), h("h3", { class: "t-h2" }, title), h("p", { class: "step-body" }, body), h("p", { class: "small" }, note));
+  const how = section("how", "how-it-works",
+    h("div", { class: "how-intro" },
+      eyebrow("How it works"),
+      h("h2", { class: "t-h1" }, "From “I used to…” to “Here’s the evidence.”"),
+      h("p", { class: "body-lg muted" }, "No blank-page portfolio. Start with something you actually did.")),
+    h("ol", { class: "steps-grid" },
+      step("01", "Start with real work", "Describe a task, problem, or change from your previous role. Everyday examples count.", "A better handover. A clearer checklist."),
+      step("02", "See the connections", "Review how your actions connect to UX skills, with a plain-language explanation for each suggestion.", "Keep what fits. Question what doesn’t."),
+      step("03", "Build your guide", "Choose the connections that fit your experience, then copy or download a guide you can build on.", "Your words. Your work. Your call.")));
+
+  const showItem = (name, line, text) => h("div", { class: "show-item" }, chip(name), h("p", { class: "show-line" }, line), h("p", { class: "small" }, text));
+  const example = section("example", "example-guide",
+    h("div", { class: "example-copy" },
+      eyebrow("An example guide"),
+      h("h2", { class: "t-h1" }, "Not a new story.", h("br"), "A new way to see yours."),
+      h("p", { class: "body-lg" }, "You don’t need to pretend your last job was a UX role. Make the relevant work visible, and be clear about what it does—and doesn’t—show."),
+      h("div", { class: "experience-group" },
+        h("p", { class: "label" }, "The experience"),
+        h("h3", { class: "t-h2" }, "“New staff kept asking the same questions at the register. I asked what was confusing and rewrote our training as a checklist.”"),
+        h("p", { class: "small" }, "Illustrative example · Retail supervisor"))),
+    h("div", { class: "example-card" },
+      h("h3", { class: "t-h2" }, "What that work can show"),
+      showItem("User research", "You asked before you changed.", "Speaking with new staff helped you understand where they struggled. That is the connection to user research."),
+      showItem("Content design", "You made information easier to use.", "Turning training into a checklist made the instructions clearer and easier to follow. That is the connection to content design."),
+      h("div", { class: "ground-box" },
+        h("p", { class: "label dark" }, "A connection is not a claim of mastery."),
+        h("p", {}, "This example doesn’t invent research methods, project results, or a UX job title."))));
+
+  const principle = (num, title, text) => h("li", { class: "principle" },
+    h("p", { class: "label home-num" }, num), h("div", { class: "principle-text" }, h("h3", { class: "t-h2" }, title), h("p", {}, text)));
+  const approach = section("approach", "our-approach",
+    h("div", { class: "approach-cols" },
+      h("div", { class: "approach-copy" },
+        eyebrow("Our approach"),
+        h("h2", { class: "t-h1" }, "More confidence.", h("br"), "Less make-believe."),
+        h("p", { class: "body-lg" }, "See the value of your experience without stretching the truth.")),
+      h("ol", { class: "principles" },
+        principle("01", "Real experience is the starting point.", "Not a fictional client or an invented project. You bring the work; we help you make sense of it."),
+        principle("02", "The reasoning stays visible.", "See why a UX skill is suggested, rather than accepting a label without context."),
+        principle("03", "Your judgement comes first.", "You decide what feels accurate. A suggestion isn’t something you have to claim."))),
+    h("div", { class: "limits-box" },
+      h("h3", { class: "t-h2" }, "Honest limits"),
+      h("p", {}, "Strong proof improves your odds of being noticed. It can’t create jobs or guarantee that employers respond.")));
+
+  const faq = (q, a) => h("div", { class: "faq-item" }, h("h3", { class: "t-h2" }, q), h("p", {}, a));
+  const questions = section("questions", "questions",
+    h("div", { class: "faq-head" },
+      eyebrow("A few good questions"),
+      h("h2", { class: "t-h1" }, "Before you", h("br"), "get started.")),
+    h("div", { class: "faq-list" },
+      faq("Is this for me if I’ve never had a UX job?", "This is for career changers trained in UX who are not yet hired. Start with real work from your previous field, not a UX job title."),
+      faq("What if my experience feels too ordinary?", "Start small. Explaining a process, improving instructions, or asking people where they get stuck can be worth examining. Keep only the connections that are accurate."),
+      faq("Will it invent details to fill the gaps?", "No. Every line comes from what you tell us. Missing evidence stays missing; it doesn’t become a made-up outcome."),
+      faq("How much does it cost?", "Nothing—it’s completely free. Work through short tasks at your own pace.")));
+
+  const invite = h("section", { class: "home-section invite" }, h("div", { class: "home-inner" },
+    h("div", { class: "invite-box" },
+      h("div", { class: "invite-copy" },
+        h("p", { class: "label" }, "You’re not starting from nothing."),
+        h("h2", { class: "t-h1" }, "Start with something", h("br"), "you’ve already done."),
+        h("p", {}, "Your next step is one real story from your past work.")),
+      h("div", { class: "invite-action" },
+        start("on-dark"),
+        h("p", {}, "Free. No autosave."),
+        h("p", {}, "Copy or download before leaving.")))));
+
+  const footer = h("footer", { class: "home-footer" }, h("div", { class: "home-inner" },
+    h("div", { class: "home-footer-row" }, h("span", { class: "home-brand" }, PRODUCT_NAME), h("p", { class: "small" }, "Real experience. Nothing invented.")),
+    h("p", { class: "small" }, "Skill names come from Tech Fleet’s Skills & Practices Framework (CC BY 4.0).")));
+
+  show([nav, hero, promises, how, example, approach, questions, invite, footer], null, "home", { noTop: true });
 }
 
 // ---------- Step 1: Describe ----------
