@@ -26,6 +26,8 @@ const state = {
 const screenEl = document.getElementById("screen");
 const progressEl = document.getElementById("progress");
 const progressLabel = document.getElementById("progress-label");
+const progressSteps = document.getElementById("progress-steps");
+document.getElementById("home-btn").addEventListener("click", () => renderWelcome());
 const mainEl = document.getElementById("main");
 
 // ---------- tiny DOM helper (always uses textContent, never innerHTML) ----------
@@ -50,9 +52,13 @@ function show(nodes, step, wide = false) {
   screenEl.replaceChildren(...[nodes].flat());
   if (step) {
     progressEl.hidden = false;
-    const names = ["Describe your work", "Find the proof", "Your proof"];
-    progressLabel.textContent = `Step ${step} of 3: ${names[step - 1]}`;
-    [...progressEl.querySelectorAll("li")].forEach((li, i) => li.classList.toggle("done", i < step));
+    const names = ["Add experience", "Review suggestions", "View your proof guide", "Copy & download"];
+    progressLabel.textContent = `Step ${step} of 4`;
+    progressSteps.replaceChildren(...names.map((name, i) => {
+      const n = i + 1;
+      const state = n < step ? "done" : n === step ? "current" : "";
+      return h("li", { class: state, "aria-current": n === step ? "step" : null }, n < step ? `✓ ${name}` : `${n}. ${name}`);
+    }));
   } else {
     progressEl.hidden = true;
   }
@@ -165,7 +171,7 @@ let refreshProof = () => {};
 function renderProof() {
   const r = state.result;
   const list = h("ul", { class: "candidates" });
-  const panel = h("aside", { class: "guide-panel", "aria-labelledby": "included-h" });
+  const panel = h("div", { class: "guide-panel" });
   const warning = h("p", { class: "error", role: "alert" });
 
   // Re-render the cards and the side panel in place (no scroll jump), then restore focus.
@@ -179,34 +185,52 @@ function renderProof() {
   refreshProof();
 
   const main = [
-    h("h2", {}, "Choose the connections for your guide"),
-    h("p", {}, "Add only what fits your experience. Edit first if needed, or skip. Every decision can be undone."),
-    h("p", {}, r.message),
-    h("p", { class: "small" },
-      r.source === "ai"
-        ? "Suggested by AI, using only your words. Check every line."
-        : "Found by matching the words you used to UX skills. Nothing was added."),
+    h("div", { class: "review-head" },
+      h("p", { class: "eyebrow" }, "Step 2 · Review suggestions"),
+      h("h1", {}, "Choose the connections for your guide"),
+      h("p", { class: "intro" }, "Add only what fits your experience. Edit first if needed, or skip. Every decision can be undone."),
+      h("p", { class: "small" }, r.message),
+      h("p", { class: "small" },
+        r.source === "ai"
+          ? "Suggested by AI, using only your words. Check every line."
+          : "Found by matching the words you used to UX skills. Nothing was added.")),
     r.note ? h("p", { class: "notice warn" }, r.note) : null,
     r.follow_up ? renderFollowUp(r.follow_up) : null,
     r.candidates.length ? list : null,
+    r.candidates.length ? h("p", { class: "attribution" }, "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0") : null,
     warning,
+  ];
+
+  const side = [
+    panel,
+    h("div", { class: "info-note" },
+      h("p", { class: "info-title" }, "Only added connections are included"),
+      h("p", {}, "Anything you skip or leave undecided stays out of your guide.")),
+  ];
+
+  const bottom = h("div", { class: "bottom-bar" },
+    h("p", {}, "Ready to preview your guide?"),
     h("div", { class: "actions" },
-      h("button", { class: "quiet", onclick: () => renderDescribe() }, "Edit my answers"),
+      h("button", { onclick: () => renderDescribe() }, "Back to experience"),
       r.candidates.length ? h("button", { class: "primary", onclick: () => {
           if (!addedCandidates().length) {
             warning.textContent = "Choose at least one connection to continue. Use “Add to guide” on a suggestion that fits your experience.";
             return;
           }
           renderResult();
-        } }, "Preview guide") : null),
-  ];
+        } }, "View your proof guide") : null));
 
-  show(h("div", { class: "review-layout" }, h("div", { class: "review-main" }, main), panel), 2, true);
+  show([
+    h("div", { class: "review-layout" },
+      h("div", { class: "review-main" }, main),
+      h("div", { class: "review-side" }, side)),
+    h("div", { class: "review-bottom" }, bottom),
+  ], 2, true);
 }
 
 function renderIncludedPanel() {
   const added = addedCandidates();
-  const nodes = [h("h3", { id: "included-h" }, "Included in your guide")];
+  const nodes = [h("div", { class: "panel-head" }, h("h2", { id: "included-h" }, "Included in your guide"), h("span", {}, "Your choices"))];
   if (!added.length) {
     nodes.push(h("p", { class: "small" }, "Nothing added yet. Choose “Add to guide” on a suggestion to include it here."));
   } else {
@@ -216,7 +240,6 @@ function renderIncludedPanel() {
         h("td", {}, `“${c.quote}”`),
         h("td", {}, c.ux_skill_label))))));
   }
-  nodes.push(h("p", { class: "small" }, "Only added connections are included in your guide."));
   return nodes;
 }
 
@@ -241,37 +264,48 @@ function renderCandidate(c) {
   const from = sourceQuestion(c.quote);
   const status = statusOf(c);
   const whyP = h("p", {}, explanationOf(c));
-  const actions = h("div", { class: "actions" });
+  const actions = h("div", { class: "card-actions" });
 
   const decide = (value) => { state.decisions[c.id] = value; refreshProof(`undo-${c.id}`); };
   const undo = () => { delete state.decisions[c.id]; refreshProof(`add-${c.id}`); };
 
-  const editBtn = h("button", { id: `edit-${c.id}`, onclick: () => {
+  const editBtn = h("button", { class: "sm", id: `edit-${c.id}`, onclick: () => {
       const area = h("textarea", { "aria-label": "Edit the explanation" });
       area.value = explanationOf(c);
-      const save = h("button", { class: "primary", onclick: () => { state.edits[c.id] = area.value.trim() || c.why_it_matters; refreshProof(`edit-${c.id}`); } }, "Save wording");
-      whyP.replaceWith(h("div", {}, area, h("div", { class: "actions" }, save,
-        h("button", { class: "quiet", onclick: () => refreshProof(`edit-${c.id}`) }, "Cancel"))));
+      const save = h("button", { class: "primary sm", onclick: () => { state.edits[c.id] = area.value.trim() || c.why_it_matters; refreshProof(`edit-${c.id}`); } }, "Save wording");
+      whyP.replaceWith(h("div", {}, area, h("div", { class: "card-actions" }, save,
+        h("button", { class: "quiet sm", onclick: () => refreshProof(`edit-${c.id}`) }, "Cancel"))));
       actions.hidden = true;
       area.focus();
-    } }, "Edit");
+    } }, "Edit first");
 
   if (status === "undecided") {
     actions.append(
-      h("button", { class: "primary", id: `add-${c.id}`, onclick: () => decide("added") }, "Add to guide"),
+      h("button", { class: "sm", id: `add-${c.id}`, onclick: () => decide("added") }, "Add to guide"),
       editBtn,
-      h("button", { onclick: () => decide("skipped") }, "Skip"));
+      h("button", { class: "quiet sm", onclick: () => decide("skipped") }, "Skip"));
   } else {
-    actions.append(h("button", { id: `undo-${c.id}`, onclick: undo }, "Undo"), editBtn);
+    actions.append(
+      h("button", { class: status === "added" ? "primary sm" : "sm", id: `undo-${c.id}`, onclick: undo }, "Undo"),
+      editBtn);
   }
 
   return h("li", { class: `candidate ${status}` },
-    h("p", { class: "badge-row" }, h("span", { class: `badge badge-${status}` }, STATUS_LABELS[status])),
-    h("p", { class: "voice" }, h("mark", {}, `“${c.quote}”`)),
-    from ? h("p", { class: "from" }, `Your answer to: ${from}`) : null,
-    h("p", { class: "skill" }, c.ux_skill_label),
-    whyP,
-    h("p", { class: "format" }, FORMAT_LABELS[c.could_become] || ""),
+    h("div", { class: "card-head" },
+      h("h2", {}, c.ux_skill_label),
+      h("span", { class: `badge badge-${status}` }, STATUS_LABELS[status])),
+    h("div", { class: "card-cols" },
+      h("div", { class: "col" },
+        h("p", { class: "label" }, "From your experience"),
+        h("p", { class: "quote" }, `“${c.quote}”`),
+        from ? h("p", { class: "from" }, `Your answer to: ${from}`) : null),
+      h("div", { class: "col" },
+        h("p", { class: "label" }, "Connects to"),
+        h("p", { class: "chip" },
+          h("span", { class: "chip-kicker" }, "UX skill"),
+          h("span", { class: "chip-name" }, c.ux_skill_label)))),
+    h("div", { class: "info-box" }, h("p", { class: "info-title" }, "Why we suggested this"), whyP),
+    FORMAT_LABELS[c.could_become] ? h("p", { class: "format" }, FORMAT_LABELS[c.could_become]) : null,
     actions);
 }
 

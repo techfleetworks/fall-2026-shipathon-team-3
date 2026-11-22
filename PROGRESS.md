@@ -11,12 +11,14 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 - Copy-to-clipboard works.
 - Edit wording on a suggestion (existing logic kept).
 - Short-input handling exists, as a follow-up question.
+- **Styling from STYLE-GUIDE.md (first pass):** `styles.css` now uses only the guide's tokens, Fraunces and Inter, the three button styles (outline default, primary, ghost; 48px, 40px in cards), status badges and the 20px/12px radii. Done for the shared header (logo tile, Home, "Nothing invented"), the four progress badges with "Step X of 4", and the review screen (cards, skill chip, info box, right column with table and note, bottom bar, attribution line). Other screens only inherit the new tokens, fonts and buttons; their layouts are not redone yet.
 - **Copy fixes:** no more "[object PointerEvent]" on Step 1 (the Start button passed the click event in as an error message). The review intro now says "Choose the ones that feel true to you." Gap questions are general ("How did you decide what the people using it needed?"). Free wording is "Free. No sign-up needed." CSS has `text-wrap: balance` on headings and `pretty` on paragraphs.
 
 ## Missing
 - **Home landing page:** only a simple welcome. Missing the nav with Start, the eyebrow, the example proof card, the three promises, How it works, the Example section, Our approach / Honest limits, the FAQ, the final CTA and the Tech Fleet CC BY 4.0 footer attribution.
 - **Shared header:** no "Nothing invented" label or button, and no 4-step badges.
 - **Step 3 "Your proof guide":** no background/role, problem, what-changed or next-steps tip, and no table of added connections.
+- **Styling gaps vs. STYLE-GUIDE.md:** Home, Step 1 and the result screen still use their old layouts (page titles are 20px, not the 36px h1). Card titles show the skill name because suggestions have no separate title. Badge text stays Undecided / Added / Skipped and Undo stays (the guide says "Added to guide" / "Not added yet" and "Remove from guide"), because earlier instructions asked for them. "About this connection" link is left out until its panel exists. The result screen is steps 3 and 4 combined, so it shows "Step 3 of 4".
 - **Step 4 "Copy & download":** no dedicated screen, no "Leave session", no "Keep your summary" reminder.
 - **Printable guide preview + PDF (`window.print()`).**
 - **Pop-ups:** Before you begin, Leave session, Finding connections (with Cancel), No connections found, Processing failed screens, Download failed, Edit connection modal, About connection panel. (The "Choose a connection" state is inline text, not a modal.) The app only has inline loading text, an inline error and a `confirm()` on start over.
