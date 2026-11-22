@@ -18,9 +18,8 @@ const state = {
   answers: ["", "", "", "", ""],
   title: "",
   result: null,
-  removed: new Set(),
+  decisions: {},      // candidate id -> "added" | "skipped" (absent = undecided)
   edits: {},          // candidate id -> edited explanation
-  chosenId: null,
   gapAnswers: {},     // question text -> answer
 };
 
@@ -46,7 +45,8 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
-function show(nodes, step) {
+function show(nodes, step, wide = false) {
+  mainEl.classList.toggle("wide", wide);
   screenEl.replaceChildren(...[nodes].flat());
   if (step) {
     progressEl.hidden = false;
@@ -138,9 +138,8 @@ async function fetchProof() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     state.result = data;
-    state.removed = new Set();
+    state.decisions = {};
     state.edits = {};
-    state.chosenId = null;
     state.gapAnswers = {};
     renderProof();
   } catch (err) {
@@ -155,31 +154,70 @@ function sourceQuestion(quote) {
   return i >= 0 ? QUESTIONS[i].label : null;
 }
 
-// ---------- Step 2: Proof candidates ----------
+// ---------- Step 2: Review suggestions ----------
+const STATUS_LABELS = { undecided: "Undecided", added: "Added", skipped: "Skipped" };
+const statusOf = (c) => state.decisions[c.id] || "undecided";
+const explanationOf = (c) => state.edits[c.id] ?? c.why_it_matters;
+const addedCandidates = () => (state.result?.candidates || []).filter((c) => state.decisions[c.id] === "added");
+
+let refreshProof = () => {};
+
 function renderProof() {
   const r = state.result;
-  const visible = r.candidates.filter((c) => !state.removed.has(c.id));
-  const parts = [h("h2", {}, "Parts of your story that could become proof")];
+  const list = h("ul", { class: "candidates" });
+  const panel = h("aside", { class: "guide-panel", "aria-labelledby": "included-h" });
+  const warning = h("p", { class: "error", role: "alert" });
 
-  parts.push(h("p", {}, r.message));
-  parts.push(h("p", { class: "small" },
-    r.source === "ai"
-      ? "Suggested by AI, using only your words. Check every line."
-      : "Found by matching the words you used to UX skills. Nothing was added."));
-  if (r.note) parts.push(h("p", { class: "notice warn" }, r.note));
+  // Re-render the cards and the side panel in place (no scroll jump), then restore focus.
+  refreshProof = (focusId) => {
+    list.replaceChildren(...r.candidates.map(renderCandidate));
+    panel.replaceChildren(...renderIncludedPanel());
+    if (addedCandidates().length) warning.textContent = "";
+    const el = focusId && document.getElementById(focusId);
+    if (el) el.focus();
+  };
+  refreshProof();
 
-  if (r.follow_up) parts.push(renderFollowUp(r.follow_up));
+  const main = [
+    h("h2", {}, "Choose the connections for your guide"),
+    h("p", {}, "Add only what fits your experience. Edit first if needed, or skip. Every decision can be undone."),
+    h("p", {}, r.message),
+    h("p", { class: "small" },
+      r.source === "ai"
+        ? "Suggested by AI, using only your words. Check every line."
+        : "Found by matching the words you used to UX skills. Nothing was added."),
+    r.note ? h("p", { class: "notice warn" }, r.note) : null,
+    r.follow_up ? renderFollowUp(r.follow_up) : null,
+    r.candidates.length ? list : null,
+    warning,
+    h("div", { class: "actions" },
+      h("button", { class: "quiet", onclick: () => renderDescribe() }, "Edit my answers"),
+      r.candidates.length ? h("button", { class: "primary", onclick: () => {
+          if (!addedCandidates().length) {
+            warning.textContent = "Choose at least one connection to continue. Use “Add to guide” on a suggestion that fits your experience.";
+            return;
+          }
+          renderResult();
+        } }, "Preview guide") : null),
+  ];
 
-  if (visible.length) {
-    parts.push(h("ul", { class: "candidates" }, visible.map(renderCandidate)));
-  } else if (r.candidates.length) {
-    parts.push(h("p", { class: "notice" }, "You’ve marked every suggestion as not accurate. That’s useful to know. Add more detail to your answers and try again."));
+  show(h("div", { class: "review-layout" }, h("div", { class: "review-main" }, main), panel), 2, true);
+}
+
+function renderIncludedPanel() {
+  const added = addedCandidates();
+  const nodes = [h("h3", { id: "included-h" }, "Included in your guide")];
+  if (!added.length) {
+    nodes.push(h("p", { class: "small" }, "Nothing added yet. Choose “Add to guide” on a suggestion to include it here."));
+  } else {
+    nodes.push(h("table", {},
+      h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "What I did"), h("th", { scope: "col" }, "What it shows"))),
+      h("tbody", {}, added.map((c) => h("tr", {},
+        h("td", {}, `“${c.quote}”`),
+        h("td", {}, c.ux_skill_label))))));
   }
-
-  parts.push(h("div", { class: "actions" },
-    h("button", { class: "quiet", onclick: () => renderDescribe() }, "Edit my answers")));
-
-  show(parts, 2);
+  nodes.push(h("p", { class: "small" }, "Only added connections are included in your guide."));
+  return nodes;
 }
 
 function renderFollowUp(fu) {
@@ -201,53 +239,65 @@ function renderFollowUp(fu) {
 
 function renderCandidate(c) {
   const from = sourceQuestion(c.quote);
-  const explanation = state.edits[c.id] ?? c.why_it_matters;
-  const whyP = h("p", {}, explanation);
+  const status = statusOf(c);
+  const whyP = h("p", {}, explanationOf(c));
+  const actions = h("div", { class: "actions" });
 
-  const editBtn = h("button", { onclick: () => {
+  const decide = (value) => { state.decisions[c.id] = value; refreshProof(`undo-${c.id}`); };
+  const undo = () => { delete state.decisions[c.id]; refreshProof(`add-${c.id}`); };
+
+  const editBtn = h("button", { id: `edit-${c.id}`, onclick: () => {
       const area = h("textarea", { "aria-label": "Edit the explanation" });
-      area.value = state.edits[c.id] ?? c.why_it_matters;
-      const save = h("button", { class: "primary", onclick: () => { state.edits[c.id] = area.value.trim() || c.why_it_matters; renderProof(); } }, "Save wording");
+      area.value = explanationOf(c);
+      const save = h("button", { class: "primary", onclick: () => { state.edits[c.id] = area.value.trim() || c.why_it_matters; refreshProof(`edit-${c.id}`); } }, "Save wording");
       whyP.replaceWith(h("div", {}, area, h("div", { class: "actions" }, save,
-        h("button", { class: "quiet", onclick: renderProof }, "Cancel"))));
+        h("button", { class: "quiet", onclick: () => refreshProof(`edit-${c.id}`) }, "Cancel"))));
+      actions.hidden = true;
       area.focus();
-    } }, "Edit wording");
+    } }, "Edit");
 
-  return h("li", { class: `candidate${state.chosenId === c.id ? " chosen" : ""}` },
+  if (status === "undecided") {
+    actions.append(
+      h("button", { class: "primary", id: `add-${c.id}`, onclick: () => decide("added") }, "Add to guide"),
+      editBtn,
+      h("button", { onclick: () => decide("skipped") }, "Skip"));
+  } else {
+    actions.append(h("button", { id: `undo-${c.id}`, onclick: undo }, "Undo"), editBtn);
+  }
+
+  return h("li", { class: `candidate ${status}` },
+    h("p", { class: "badge-row" }, h("span", { class: `badge badge-${status}` }, STATUS_LABELS[status])),
     h("p", { class: "voice" }, h("mark", {}, `“${c.quote}”`)),
     from ? h("p", { class: "from" }, `Your answer to: ${from}`) : null,
     h("p", { class: "skill" }, c.ux_skill_label),
     whyP,
     h("p", { class: "format" }, FORMAT_LABELS[c.could_become] || ""),
-    h("div", { class: "actions" },
-      h("button", { class: "primary", onclick: () => { state.chosenId = c.id; renderResult(); } }, "Use this one"),
-      editBtn,
-      h("button", { class: "quiet", onclick: () => { state.removed.add(c.id); if (state.chosenId === c.id) state.chosenId = null; renderProof(); } }, "Not accurate")));
+    actions);
 }
 
 // ---------- Step 3: Result ----------
-function chosen() {
-  return state.result.candidates.find((c) => c.id === state.chosenId);
+// All added connections go into the guide. Gap questions are shared, so ask each only once.
+function allGaps() {
+  return [...new Set(addedCandidates().flatMap((c) => c.missing || []))];
 }
 
 function proofAsText() {
-  const c = chosen();
-  const lines = [
-    "Proof from my past work",
-    "",
-    `Skill it shows: ${c.ux_skill_label}`,
-    "",
-    "What I did, in my own words:",
-    `“${c.quote}”`,
-    "",
-    "Why it matters:",
-    state.edits[c.id] ?? c.why_it_matters,
-    "",
-    FORMAT_LABELS[c.could_become] || "",
-  ];
-  const gaps = (c.missing || []).filter((q) => state.gapAnswers[q]?.trim());
+  const lines = ["Proof from my past work", ""];
+  addedCandidates().forEach((c, i) => {
+    lines.push(
+      `${i + 1}. Skill it shows: ${c.ux_skill_label}`,
+      "",
+      "What I did, in my own words:",
+      `“${c.quote}”`,
+      "",
+      "Why it matters:",
+      explanationOf(c));
+    if (FORMAT_LABELS[c.could_become]) lines.push("", FORMAT_LABELS[c.could_become]);
+    lines.push("");
+  });
+  const gaps = allGaps().filter((q) => state.gapAnswers[q]?.trim());
   if (gaps.length) {
-    lines.push("", "More detail:");
+    lines.push("More detail:");
     gaps.forEach((q) => lines.push(`${q}`, state.gapAnswers[q].trim(), ""));
   }
   return lines.join("\n").trim() + "\n";
@@ -270,15 +320,16 @@ function loadDocx() {
 }
 
 function proofParts() {
-  const c = chosen();
-  const gaps = (c.missing || []).filter((q) => state.gapAnswers[q]?.trim())
+  const gaps = allGaps().filter((q) => state.gapAnswers[q]?.trim())
     .map((q) => ({ heading: q, text: state.gapAnswers[q].trim() }));
   return {
     title: `Proof from my past work: ${state.answers[0].trim().replace(/[.!]+$/, "") || "one piece of work"}`,
-    skill: c.ux_skill_label,
-    format: FORMAT_LABELS[c.could_become] || "",
-    quote: `“${c.quote}”`,
-    why: (state.edits[c.id] ?? c.why_it_matters).trim(),
+    items: addedCandidates().map((c) => ({
+      skill: c.ux_skill_label,
+      format: FORMAT_LABELS[c.could_become] || "",
+      quote: `“${c.quote}”`,
+      why: explanationOf(c).trim(),
+    })),
     gaps,
   };
 }
@@ -293,18 +344,21 @@ async function proofAsDocx() {
 
   const children = [
     new d.Paragraph({ heading: d.HeadingLevel.TITLE, children: [new d.TextRun(p.title)] }),
-    new d.Paragraph({ children: [new d.TextRun({ text: "Skill it shows: ", bold: true }), new d.TextRun(p.skill)] }),
-    new d.Paragraph({
-      spacing: { before: 240, after: 240 },
-      indent: { left: 240 },
-      border: { left: { style: d.BorderStyle.SINGLE, size: 24, color: "C9D23A", space: 10 } },
-      shading: { type: d.ShadingType.CLEAR, color: "auto", fill: "F6F8C8" },
-      children: [new d.TextRun({ text: p.quote, italics: true, size: 26, font: "Georgia" })],
-    }),
-    heading("Why it matters"),
-    ...paras(p.why),
   ];
-  if (p.format) children.push(new d.Paragraph({ children: [new d.TextRun({ text: p.format, italics: true, color: "545E74" })] }));
+  for (const item of p.items) {
+    children.push(
+      new d.Paragraph({ children: [new d.TextRun({ text: "Skill it shows: ", bold: true }), new d.TextRun(item.skill)] }),
+      new d.Paragraph({
+        spacing: { before: 240, after: 240 },
+        indent: { left: 240 },
+        border: { left: { style: d.BorderStyle.SINGLE, size: 24, color: "C9D23A", space: 10 } },
+        shading: { type: d.ShadingType.CLEAR, color: "auto", fill: "F6F8C8" },
+        children: [new d.TextRun({ text: item.quote, italics: true, size: 26, font: "Georgia" })],
+      }),
+      heading("Why it matters"),
+      ...paras(item.why));
+    if (item.format) children.push(new d.Paragraph({ children: [new d.TextRun({ text: item.format, italics: true, color: "545E74" })] }));
+  }
   if (p.gaps.length) {
     children.push(heading("More detail"));
     for (const g of p.gaps) children.push(heading(g.heading, d.HeadingLevel.HEADING_2), ...paras(g.text));
@@ -341,12 +395,13 @@ function fileSlug() {
 }
 
 function renderResult() {
-  const c = chosen();
+  const added = addedCandidates();
+  const gapQuestions = allGaps();
   const status = h("p", { class: "status-msg", role: "status" });
   const checklist = h("ul", { class: "checklist" });
 
   const updateChecklist = () => {
-    const gaps = c.missing || [];
+    const gaps = gapQuestions;
     const filled = gaps.filter((q) => state.gapAnswers[q]?.trim()).length;
     checklist.replaceChildren(
       h("li", { class: "met" }, "Uses only your own words"),
@@ -356,7 +411,7 @@ function renderResult() {
       h("li", { class: state.privacyChecked ? "met" : "" }, "Names of people and places removed"));
   };
 
-  const gapFields = (c.missing || []).map((q, i) => {
+  const gapFields = gapQuestions.map((q, i) => {
     const id = `gap${i}`;
     const area = h("textarea", { id });
     area.value = state.gapAnswers[q] || "";
@@ -373,12 +428,12 @@ function renderResult() {
   show([
     h("h2", {}, "Your proof"),
     h("p", {}, "This is yours to keep. Fill in what only you know, then copy it or download it as a Word file."),
-    h("article", { class: "proof" },
+    ...added.map((c) => h("article", { class: "proof" },
       h("p", { class: "skill" }, c.ux_skill_label),
       h("p", { class: "voice" }, h("mark", {}, `“${c.quote}”`)),
       h("h3", {}, "Why it matters"),
-      h("p", {}, state.edits[c.id] ?? c.why_it_matters),
-      h("p", { class: "format" }, FORMAT_LABELS[c.could_become] || "")),
+      h("p", {}, explanationOf(c)),
+      h("p", { class: "format" }, FORMAT_LABELS[c.could_become] || ""))),
     gapFields.length ? h("section", {}, h("h3", {}, "Needs your input"), ...gapFields) : null,
     h("h3", {}, "What done looks like"),
     checklist,
@@ -405,10 +460,10 @@ function renderResult() {
         } }, "Download Word file (.docx)")),
     status,
     h("div", { class: "actions" },
-      h("button", { class: "quiet", onclick: renderProof }, "Choose a different part"),
+      h("button", { class: "quiet", onclick: renderProof }, "Back to suggestions"),
       h("button", { class: "quiet", onclick: () => {
           if (!confirm("Start over? Your answers and proof will be cleared.")) return;
-          Object.assign(state, { answers: ["", "", "", "", ""], title: "", result: null, removed: new Set(), edits: {}, chosenId: null, gapAnswers: {}, privacyChecked: false });
+          Object.assign(state, { answers: ["", "", "", "", ""], title: "", result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
           renderWelcome();
         } }, "Start over")),
   ], 3);

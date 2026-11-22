@@ -135,6 +135,23 @@ button:disabled { opacity: .55; cursor: progress; }
 .missing { margin: .5rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: .95rem; }
 .candidate .actions { margin-top: 1rem; }
 
+/* Review step: cards + "Included in your guide" panel */
+main.wide { max-width: 68rem; }
+.review-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 2.5rem; align-items: start; }
+.guide-panel { position: sticky; top: 1rem; background: var(--surface); border: 1px solid var(--rule); border-radius: .75rem; padding: 1.1rem; }
+.guide-panel table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-bottom: 1rem; }
+.guide-panel th, .guide-panel td { text-align: left; vertical-align: top; padding: .5rem .4rem; border-bottom: 1px solid var(--rule); }
+.guide-panel th { color: var(--muted); font-size: .85rem; }
+.badge-row { margin: 0 0 .5rem; }
+.badge { display: inline-block; font-size: .82rem; font-weight: 700; padding: .1rem .6rem; border-radius: 1rem; border: 1.5px solid var(--muted); color: var(--muted); }
+.badge-added { border-color: var(--ok); color: var(--ok); }
+.candidate.added { border-left: 4px solid var(--ok); padding-left: 1rem; }
+.candidate.skipped { opacity: .7; }
+@media (max-width: 56rem) {
+  .review-layout { grid-template-columns: 1fr; }
+  .guide-panel { position: static; }
+}
+
 .notice { background: var(--surface); border: 1px solid var(--rule); border-radius: .5rem; padding: .8rem 1rem; font-size: .95rem; }
 .notice.warn { border-color: var(--warn); }
 .error { color: var(--warn); font-weight: 700; }
