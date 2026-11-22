@@ -117,6 +117,10 @@ button:disabled { opacity: .55; cursor: progress; }
 .info-box p { margin: 0; color: var(--ink-soft); }
 .info-box .info-title { color: var(--foreground); }
 .format { font-size: 14px; line-height: 21px; color: var(--muted-foreground); margin: 0; }
+button.link { height: auto; padding: 0; border: 0; background: none; color: var(--primary); font: 400 14px/21px var(--font-body); text-align: left; align-self: flex-start; }
+.about-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.about-panel p { margin: 0; }
+.about-text { font-size: 14px; line-height: 21px; color: var(--ink-soft); }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .attribution { font-size: 14px; line-height: 21px; color: var(--muted-foreground); margin: 0; }
 

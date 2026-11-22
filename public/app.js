@@ -145,6 +145,7 @@ async function fetchProof() {
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     state.result = data;
     state.decisions = {};
+    openAbout.clear();
     state.edits = {};
     state.gapAnswers = {};
     renderProof();
@@ -153,15 +154,9 @@ async function fetchProof() {
   }
 }
 
-// Which question did this quote come from?
-function sourceQuestion(quote) {
-  const norm = (s) => s.toLowerCase().replace(/\s+/g, " ");
-  const i = state.answers.findIndex((a) => norm(a).includes(norm(quote)));
-  return i >= 0 ? QUESTIONS[i].label : null;
-}
-
 // ---------- Step 2: Review suggestions ----------
-const STATUS_LABELS = { undecided: "Undecided", added: "Added", skipped: "Skipped" };
+const STATUS_LABELS = { undecided: "Not added yet", added: "Added to guide", skipped: "Skipped" };
+const openAbout = new Set(); // candidate ids whose "About this connection" panel is open
 const statusOf = (c) => state.decisions[c.id] || "undecided";
 const explanationOf = (c) => state.edits[c.id] ?? c.why_it_matters;
 const addedCandidates = () => (state.result?.candidates || []).filter((c) => state.decisions[c.id] === "added");
@@ -189,11 +184,8 @@ function renderProof() {
       h("p", { class: "eyebrow" }, "Step 2 · Review suggestions"),
       h("h1", {}, "Choose the connections for your guide"),
       h("p", { class: "intro" }, "Add only what fits your experience. Edit first if needed, or skip. Every decision can be undone."),
-      h("p", { class: "small" }, r.message),
-      h("p", { class: "small" },
-        r.source === "ai"
-          ? "Suggested by AI, using only your words. Check every line."
-          : "Found by matching the words you used to UX skills. Nothing was added.")),
+      r.candidates.length ? null : h("p", { class: "small" }, r.message),
+      r.source === "ai" && r.candidates.length ? h("p", { class: "small" }, "Suggested by AI, using only your words. Check every line.") : null),
     r.note ? h("p", { class: "notice warn" }, r.note) : null,
     r.follow_up ? renderFollowUp(r.follow_up) : null,
     r.candidates.length ? list : null,
@@ -205,7 +197,7 @@ function renderProof() {
     panel,
     h("div", { class: "info-note" },
       h("p", { class: "info-title" }, "Only added connections are included"),
-      h("p", {}, "Anything you skip or leave undecided stays out of your guide.")),
+      h("p", {}, "Undecided and skipped connections stay out of your guide. You can change your choices before leaving.")),
   ];
 
   const bottom = h("div", { class: "bottom-bar" },
@@ -261,10 +253,10 @@ function renderFollowUp(fu) {
 }
 
 function renderCandidate(c) {
-  const from = sourceQuestion(c.quote);
   const status = statusOf(c);
   const whyP = h("p", {}, explanationOf(c));
   const actions = h("div", { class: "card-actions" });
+  const aboutOpen = openAbout.has(c.id);
 
   const decide = (value) => { state.decisions[c.id] = value; refreshProof(`undo-${c.id}`); };
   const undo = () => { delete state.decisions[c.id]; refreshProof(`add-${c.id}`); };
@@ -278,34 +270,42 @@ function renderCandidate(c) {
       actions.hidden = true;
       area.focus();
     } }, "Edit first");
+  const skipBtn = h("button", { class: "quiet sm", onclick: () => decide("skipped") }, "Skip");
 
   if (status === "undecided") {
-    actions.append(
-      h("button", { class: "sm", id: `add-${c.id}`, onclick: () => decide("added") }, "Add to guide"),
-      editBtn,
-      h("button", { class: "quiet sm", onclick: () => decide("skipped") }, "Skip"));
+    actions.append(h("button", { class: "sm", id: `add-${c.id}`, onclick: () => decide("added") }, "Add to guide"), editBtn, skipBtn);
+  } else if (status === "added") {
+    actions.append(h("button", { class: "primary sm", id: `undo-${c.id}`, onclick: undo }, "Remove from guide"), editBtn, skipBtn);
   } else {
-    actions.append(
-      h("button", { class: status === "added" ? "primary sm" : "sm", id: `undo-${c.id}`, onclick: undo }, "Undo"),
-      editBtn);
+    actions.append(h("button", { class: "sm", id: `undo-${c.id}`, onclick: undo }, "Undo"), editBtn);
   }
+
+  const aboutLink = h("button", { class: "link", id: `about-${c.id}`, "aria-expanded": String(aboutOpen),
+    onclick: () => { openAbout.add(c.id); refreshProof(`done-${c.id}`); } }, "About this connection");
+
+  const aboutPanel = aboutOpen ? h("div", { class: "about-panel", role: "region", "aria-label": "About this connection" },
+    h("p", { class: "label" }, "About this connection"),
+    h("p", { class: "about-text" }, h("strong", {}, c.ux_skill_label), ": ", explanationOf(c)),
+    h("p", { class: "attribution" }, "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0"),
+    h("div", { class: "card-actions" },
+      h("button", { class: "sm", id: `done-${c.id}`, onclick: () => { openAbout.delete(c.id); refreshProof(`about-${c.id}`); } }, "Done"))) : null;
 
   return h("li", { class: `candidate ${status}` },
     h("div", { class: "card-head" },
-      h("h2", {}, c.ux_skill_label),
+      h("h2", {}, c.title || c.ux_skill_label),
       h("span", { class: `badge badge-${status}` }, STATUS_LABELS[status])),
     h("div", { class: "card-cols" },
       h("div", { class: "col" },
         h("p", { class: "label" }, "From your experience"),
-        h("p", { class: "quote" }, `“${c.quote}”`),
-        from ? h("p", { class: "from" }, `Your answer to: ${from}`) : null),
+        h("p", { class: "quote" }, `“${c.quote}”`)),
       h("div", { class: "col" },
         h("p", { class: "label" }, "Connects to"),
         h("p", { class: "chip" },
           h("span", { class: "chip-kicker" }, "UX skill"),
-          h("span", { class: "chip-name" }, c.ux_skill_label)))),
+          h("span", { class: "chip-name" }, c.ux_skill_label)),
+        aboutLink)),
+    aboutPanel,
     h("div", { class: "info-box" }, h("p", { class: "info-title" }, "Why we suggested this"), whyP),
-    FORMAT_LABELS[c.could_become] ? h("p", { class: "format" }, FORMAT_LABELS[c.could_become]) : null,
     actions);
 }
 
