@@ -11,6 +11,7 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 - Copy-to-clipboard works.
 - Edit wording on a suggestion (existing logic kept).
 - Short-input handling exists, as a follow-up question.
+- **Copy fixes:** no more "[object PointerEvent]" on Step 1 (the Start button passed the click event in as an error message). The review intro now says "Choose the ones that feel true to you." Gap questions are general ("How did you decide what the people using it needed?"). Free wording is "Free. No sign-up needed." CSS has `text-wrap: balance` on headings and `pretty` on paragraphs.
 
 ## Missing
 - **Home landing page:** only a simple welcome. Missing the nav with Start, the eyebrow, the example proof card, the three promises, How it works, the Example section, Our approach / Honest limits, the FAQ, the final CTA and the Tech Fleet CC BY 4.0 footer attribution.
@@ -20,6 +21,7 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 - **Printable guide preview + PDF (`window.print()`).**
 - **Pop-ups:** Before you begin, Leave session, Finding connections (with Cancel), No connections found, Processing failed screens, Download failed, Edit connection modal, About connection panel. (The "Choose a connection" state is inline text, not a modal.) The app only has inline loading text, an inline error and a `confirm()` on start over.
 - **Per-card:** "Connects to" chip with the framework definition and link, and the "About this connection" panel. Edit is still inline, not the brief's Edit connection modal.
+- **Tech Fleet attribution:** the app has no "Tech Fleet skill" label and no "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0" line anywhere. It still needs adding (landing footer and guide). There is also no FAQ yet, so the cost answer ("Nothing—it's completely free. Work through short tasks at your own pace.") has nowhere to go.
 - **Framework skill list:** I haven't checked whether the Tech Fleet skills list is in the prompt (look in `lib/`).
 - **Deploy:** no Vercel/Netlify config or shareable link.
 

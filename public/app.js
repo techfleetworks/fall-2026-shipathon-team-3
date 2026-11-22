@@ -76,10 +76,10 @@ function renderWelcome() {
       h("li", {}, "Keep what’s accurate, fill in the gaps, and take it with you.")),
     h("div", { class: "honest" },
       h("p", {}, "It takes about 30 minutes here. Finishing a full portfolio piece takes a few more hours on your own."),
-      h("p", {}, "It’s free and doesn’t save anything, so copy or download your proof before you leave."),
+      h("p", {}, "Free. No sign-up needed. It doesn’t save anything, so copy or download your proof before you leave."),
       h("p", {}, "It can make your proof clearer. It can’t promise interviews or jobs.")),
     h("div", { class: "actions" },
-      h("button", { class: "primary", onclick: renderDescribe }, "Start with one piece of work")),
+      h("button", { class: "primary", onclick: () => renderDescribe() }, "Start with one piece of work")),
   ]);
 }
 

@@ -23,7 +23,7 @@ if (!sparkleInfo) { fail++; console.log("✗ sparkleclean_new_website regression
 else {
   const problems = [];
   if (sparkleInfo.could_become !== "case_study") problems.push("new project was presented as a before-and-after redesign");
-  if (!sparkleInfo.missing.includes("How did you decide what information visitors needed?")) problems.push("new project follow-up did not ask about visitors' information needs");
+  if (!sparkleInfo.missing.includes("How did you decide what the people using it needed?")) problems.push("new project follow-up did not ask about what the people using it needed");
   if (problems.length) { fail++; console.log(`✗ sparkleclean_new_website regression\n  - ${problems.join("\n  - ")}`); }
   else { pass++; console.log("✓ sparkleclean_new_website regression  (new project wording)"); }
 }
