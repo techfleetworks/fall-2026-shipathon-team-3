@@ -8,7 +8,7 @@ import handler from "./api/proof-candidates.js";
 
 const ROOT = fileURLToPath(new URL("./public/", import.meta.url));
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml" };
-const PUBLIC = new Set(["/index.html", "/styles.css", "/app.js", "/favicon.svg"]);
+const PUBLIC = new Set(["/index.html", "/styles.css", "/app.js", "/favicon.svg", "/logo.svg"]);
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");

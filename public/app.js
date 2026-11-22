@@ -1,11 +1,11 @@
-// Proof from past work: front end. No framework, no build step.
+// Proofwork: front end. No framework, no build step.
 // State lives in memory only (MVP #1 has no accounts or saving).
 
 const QUESTIONS = [
-  { label: "What was your role then? (optional)", placeholder: "Retail store manager" },
-  { label: "What was the situation or problem?", placeholder: "New staff kept making mistakes at the register in their first weeks.", height: 80 },
-  { label: "What did you do, step by step?", placeholder: "Asked new staff where they got stuck, rewrote the training into a one-page checklist, and changed it after watching the first week.", height: 104 },
-  { label: "What changed because of it?", placeholder: "Fewer people asked me for help at the register after the first week.", height: 72 },
+  { label: "What was your role then?", placeholder: "Example: Retail store manager" },
+  { label: "What was the situation or problem?", placeholder: "Example: New staff kept making mistakes at the register in their first weeks.", height: 80 },
+  { label: "What did you do, step by step?", placeholder: "Example: Asked new staff where they got stuck, rewrote the training into a one-page checklist, and changed it after watching the first week.", height: 104 },
+  { label: "What changed because of it?", placeholder: "Example: Fewer people asked me for help at the register after the first week.", height: 72 },
 ];
 
 const FORMAT_LABELS = {
@@ -136,7 +136,6 @@ function openModal({ label, heading, content = [], buttons = [], returnTo, initi
 }
 
 const hasEnteredAnything = () => state.answers.some((a) => a.trim());
-const wordsIn = (text) => text.split(/\s+/).filter(Boolean).length;
 
 // Moves back to the experience form without losing what was typed. Already on it? Just focus the main field.
 function backToExperience() {
@@ -157,38 +156,16 @@ function openBeginModal() {
   });
 }
 
-// 2. Leave this session?: Leave session on Step 4, and Home in the header once something is entered.
-function openLeaveModal() {
+// 2. Leave this session?: Leave session on Step 4 and Home in the header (once something is entered) go home;
+// "Create another proof" on Step 4 goes to a fresh Step 1. Either way "Leave anyway" clears everything first.
+function openLeaveModal(goTo = () => renderWelcome()) {
   openModal({
     label: MODAL_LABEL,
     heading: "Leave this session?",
     content: [modalMsg("Your experience and guide are not saved. If you haven’t copied or downloaded your guide, leaving will lose your work.")],
     buttons: [
       { text: "Stay here", primary: true, escape: true },
-      { text: "Leave anyway", onclick: () => { resetAll(); renderWelcome(); } },
-    ],
-  });
-}
-
-// 4. Add a little more detail: the answers are too short.
-function openTooShortModal() {
-  openModal({
-    label: MODAL_LABEL,
-    heading: "Add a little more detail",
-    content: [modalMsg("Describe the situation and at least one specific action you took. For example: “I asked new staff where they got stuck.” Your experience has not been cleared.")],
-    buttons: [{ text: "Back to experience", primary: true, escape: true, onclick: backToExperience }],
-  });
-}
-
-// 5. No connections found yet: the engine returned zero suggestions.
-function openNoConnectionsModal() {
-  openModal({
-    label: MODAL_LABEL,
-    heading: "No connections found yet",
-    content: [modalMsg("There isn’t enough specific evidence to suggest a connection confidently. Add what you did, who it helped, and what changed. Nothing will be invented.")],
-    buttons: [
-      { text: "Edit experience", primary: true, escape: true, onclick: backToExperience },
-      { text: "Return home", onclick: () => renderWelcome() },
+      { text: "Leave anyway", onclick: () => { resetAll(); goTo(); } },
     ],
   });
 }
@@ -216,16 +193,6 @@ function openDownloadFailedModal(retry, back) {
       { text: "Try again", primary: true, onclick: retry },
       { text: "Back to guide", escape: true, onclick: back },
     ],
-  });
-}
-
-// 8. Add a connection first: View your proof guide with nothing added.
-function openAddFirstModal() {
-  openModal({
-    label: MODAL_LABEL,
-    heading: "Add a connection first",
-    content: [modalMsg("Your guide only includes the connections you add. Add at least one, then preview your guide. Skipped and undecided connections are left out.")],
-    buttons: [{ text: "Keep reviewing", primary: true, escape: true }],
   });
 }
 
@@ -261,7 +228,7 @@ function openAboutModal(c) {
 }
 
 // ---------- Home ----------
-const PRODUCT_NAME = "Proof from past work";
+const PRODUCT_NAME = "Proofwork";
 
 function renderWelcome() {
   const start = (cls = "primary") => h("button", { class: cls, type: "button", onclick: () => openBeginModal() }, "Start");
@@ -272,7 +239,7 @@ function renderWelcome() {
   const nav = h("header", { class: "home-nav" },
     h("div", { class: "home-nav-inner" },
       h("div", { class: "home-nav-left" },
-        h("span", { class: "home-brand" }, PRODUCT_NAME),
+        h("img", { class: "logo", src: "/logo.svg", alt: PRODUCT_NAME, height: "34" }),
         h("nav", { class: "home-links", "aria-label": "Sections" },
           h("a", { href: "#how-it-works" }, "How it works"),
           h("a", { href: "#example-guide" }, "Example guide"),
@@ -385,13 +352,15 @@ function renderWelcome() {
 
 // ---------- Step 1: Describe ----------
 function renderDescribe(errorText) {
+  const inputs = [];
   const fields = QUESTIONS.map((q, i) => {
     const id = `q${i + 1}`;
     const input = q.height
-      ? h("textarea", { id, name: id, maxlength: "2000", placeholder: q.placeholder, style: `height:${q.height}px` })
-      : h("input", { type: "text", id, name: id, maxlength: "200", placeholder: q.placeholder });
+      ? h("textarea", { id, name: id, maxlength: "2000", required: true, "aria-required": "true", placeholder: q.placeholder, style: `height:${q.height}px` })
+      : h("input", { type: "text", id, name: id, maxlength: "200", required: true, "aria-required": "true", placeholder: q.placeholder });
     input.value = state.answers[i];
-    input.addEventListener("input", () => { state.answers[i] = input.value; });
+    input.addEventListener("input", () => { state.answers[i] = input.value; input.removeAttribute("aria-invalid"); });
+    inputs.push(input);
     return h("div", { class: "field" }, h("label", { for: id }, q.label), input);
   });
 
@@ -400,9 +369,14 @@ function renderDescribe(errorText) {
 
   const form = h("form", { class: "form-stack", novalidate: true, onsubmit: async (e) => {
       e.preventDefault();
-      // The role (first field) is optional, so it doesn't count toward the minimum.
-      const filled = state.answers.slice(1).filter((a) => a.trim()).length;
-      if (filled < 2) { openTooShortModal(); return; }
+      // Basic validation only: every field is required. Nothing after this step blocks the person.
+      const empty = inputs.filter((input, i) => !state.answers[i].trim());
+      inputs.forEach((input, i) => { if (!state.answers[i].trim()) input.setAttribute("aria-invalid", "true"); });
+      if (empty.length) {
+        status.textContent = "Please fill in every field to continue.";
+        empty[0].focus();
+        return;
+      }
       status.textContent = "";
       await fetchProof();
     } },
@@ -452,12 +426,7 @@ async function fetchProof() {
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     if (controller.signal.aborted) return;
     loading.close();
-    if (!data.candidates?.length) {
-      // Too little written -> "Add a little more detail". Enough written but nothing to suggest -> "No connections found yet".
-      const tooShort = data.status === "needs_more_detail" && wordsIn(state.answers.join(" ")) < 20;
-      if (tooShort) openTooShortModal(); else openNoConnectionsModal();
-      return;
-    }
+    // Never block progress: even with no suggestions the person goes on to Step 2, which explains and lets them continue.
     state.result = data;
     state.decisions = {};
     state.edits = {};
@@ -496,11 +465,11 @@ function renderProof() {
       h("p", { class: "eyebrow" }, "Step 2 · Review suggestions"),
       h("h1", {}, "Choose the connections for your guide"),
       h("p", { class: "intro" }, "Add only what fits your experience. Edit first if needed, or skip. Every decision can be undone."),
-      r.candidates.length ? null : h("p", { class: "small" }, r.message),
       r.source === "ai" && r.candidates.length ? h("p", { class: "small" }, "Suggested by AI, using only your words. Check every line.") : null),
     r.note ? h("p", { class: "notice warn" }, r.note) : null,
-    r.follow_up ? renderFollowUp(r.follow_up) : null,
-    r.candidates.length ? list : null,
+    r.candidates.length ? list : h("div", { class: "empty-card" },
+      h("p", {}, "Not enough specific evidence to suggest a connection. Try adding what you did, who it helped, and what changed."),
+      h("div", { class: "actions" }, h("button", { onclick: () => renderDescribe() }, "Back to experience"))),
     r.candidates.length ? h("p", { class: "attribution" }, "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0") : null,
   ];
 
@@ -514,11 +483,10 @@ function renderProof() {
   const bottom = h("div", { class: "bottom-bar" },
     h("p", {}, "Ready to preview your guide?"),
     h("div", { class: "actions" },
-      h("button", { onclick: () => renderDescribe() }, "Back to experience"),
-      r.candidates.length ? h("button", { class: "primary", onclick: () => {
-          if (!addedCandidates().length) { openAddFirstModal(); return; }
-          renderGuide();
-        } }, "View your proof guide") : null));
+      // With no suggestions the card above already has "Back to experience", so don't repeat it.
+      r.candidates.length ? h("button", { onclick: () => renderDescribe() }, "Back to experience") : null,
+      // Never blocked: the guide can be viewed with nothing added.
+      h("button", { class: "primary", onclick: () => renderGuide() }, "View your proof guide")));
 
   show([
     h("div", { class: "review-layout" },
@@ -532,7 +500,9 @@ function renderIncludedPanel() {
   const added = addedCandidates();
   const nodes = [h("div", { class: "panel-head" }, h("h2", { id: "included-h" }, "Included in your guide"), h("span", {}, "Your choices"))];
   if (!added.length) {
-    nodes.push(h("p", { class: "small" }, "Nothing added yet. Choose “Add to guide” on a suggestion to include it here."));
+    nodes.push(h("p", { class: "small" }, state.result?.candidates?.length
+      ? "Nothing added yet. Choose “Add to guide” on a suggestion to include it here."
+      : "No connections added yet."));
   } else {
     nodes.push(h("table", {},
       h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "What I did"), h("th", { scope: "col" }, "What it shows"))),
@@ -541,21 +511,6 @@ function renderIncludedPanel() {
         h("td", {}, c.ux_skill_label))))));
   }
   return nodes;
-}
-
-function renderFollowUp(fu) {
-  const area = h("textarea", { id: "followup" });
-  const btn = h("button", { class: "primary", onclick: async () => {
-      if (!area.value.trim()) { area.focus(); return; }
-      state.answers[2] = [state.answers[2], area.value.trim()].filter(Boolean).join("\n");
-      await fetchProof();
-    } }, "Add this and try again");
-  return h("section", { class: "notice" },
-    h("label", { for: "followup" }, h("strong", {}, fu.question)),
-    fu.examples?.length ? h("ul", { class: "missing" }, fu.examples.map((e) => h("li", {}, e))) : null,
-    h("p", { class: "small" }, "This gets added to your answer about what you did."),
-    area,
-    h("div", { class: "actions" }, btn));
 }
 
 function renderCandidate(c) {
@@ -623,9 +578,10 @@ function storySections() {
 }
 
 function proofAsText() {
-  const lines = ["Proof from my past work", ""];
+  const lines = [guideTitle(), ""];
   storySections().forEach(([label, text]) => lines.push(`${label}:`, text, ""));
   lines.push("How my work connects to UX skills:", "");
+  if (!addedCandidates().length) lines.push("No connections added yet.", "");
   addedCandidates().forEach((c, i) => {
     lines.push(
       `${i + 1}. Skill it shows: ${c.ux_skill_label}`,
@@ -643,6 +599,7 @@ function proofAsText() {
     lines.push("More detail:");
     gaps.forEach((q) => lines.push(`${q}`, state.gapAnswers[q].trim(), ""));
   }
+  lines.push(`Made with ${PRODUCT_NAME}. ${SKILL_ATTRIBUTION}.`);
   return lines.join("\n").trim() + "\n";
 }
 
@@ -658,8 +615,11 @@ function guideEyebrow() {
   return h("p", { class: "label" }, role ? `Your guide · Background: ${role}` : "Your guide");
 }
 
-// "What I did | UX skill connection": one row per added connection.
+const NO_CONNECTIONS = "No connections added yet";
+
+// "What I did | UX skill connection": one row per added connection, or a plain note when none were added.
 function connectionsTable() {
+  if (!addedCandidates().length) return h("p", { class: "conn-empty" }, NO_CONNECTIONS);
   return h("table", { class: "conn-table" },
     h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "What I did"), h("th", { scope: "col" }, "UX skill connection"))),
     h("tbody", {}, addedCandidates().map((c) => h("tr", {},
@@ -736,11 +696,13 @@ function renderPreview() {
       h("div", { class: "doc-cols" }, cell("The problem", problem), cell("What I did", did)),
       h("div", { class: "doc-connections" },
         h("h3", { class: "doc-heading" }, "UX connections to build on"),
-        h("ul", { class: "doc-list" }, addedCandidates().map((c, i) => h("li", { class: "conn-box" },
-          h("span", { class: "conn-num" }, String(i + 1).padStart(2, "0")),
-          h("div", { class: "conn-text" },
-            h("p", { class: "conn-did" }, `“${c.quote}”`),
-            h("p", { class: "conn-skill" }, c.ux_skill_label)))))),
+        addedCandidates().length
+          ? h("ul", { class: "doc-list" }, addedCandidates().map((c, i) => h("li", { class: "conn-box" },
+              h("span", { class: "conn-num" }, String(i + 1).padStart(2, "0")),
+              h("div", { class: "conn-text" },
+                h("p", { class: "conn-did" }, `“${c.quote}”`),
+                h("p", { class: "conn-skill" }, c.ux_skill_label)))))
+          : h("p", { class: "conn-empty" }, NO_CONNECTIONS)),
       h("div", { class: "doc-foot" },
         h("div", { class: "doc-divider" }),
         h("p", { class: "doc-credit" }, `Made with ${PRODUCT_NAME}. ${SKILL_ATTRIBUTION}.`),
@@ -768,7 +730,8 @@ function renderDownload() {
     h("p", { class: "reminder" }, "No autosave: copy or download your guide before closing this tab. Your experience and guide won’t be kept after you leave."),
     h("div", { class: "download-actions" },
       h("div", { class: "button-row" },
-        h("button", { onclick: renderGuide }, "Back to proof guide"),
+        // Asks first (everything is cleared), then starts a fresh Step 1.
+        h("button", { "aria-haspopup": "dialog", onclick: () => openLeaveModal(() => renderDescribe()) }, "Create another proof"),
         h("div", { class: "actions" },
           h("button", { onclick: async () => {
               try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
@@ -776,7 +739,7 @@ function renderDownload() {
             } }, "Copy guide"),
           h("button", { class: "primary", onclick: () => { renderPreview(); printGuide(); } }, "Download"))),
       status),
-    h("p", { class: "made-with" }, `Made with Proof. ${SKILL_ATTRIBUTION}.`)),
+    h("p", { class: "made-with" }, `Made with ${PRODUCT_NAME}. ${SKILL_ATTRIBUTION}.`)),
   4, "download", { noTop: true });
 }
 

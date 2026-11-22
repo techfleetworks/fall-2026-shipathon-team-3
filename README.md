@@ -1,4 +1,4 @@
-# Proof from past work
+# Proofwork
 
 Proof helps UX-trained career changers turn one piece of past, non-UX work into evidence an employer can judge, using only their own words.
 

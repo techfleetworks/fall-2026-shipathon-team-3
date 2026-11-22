@@ -29,11 +29,26 @@ else {
   if (problems.length) { fail++; console.log(`✗ sparkleclean_new_website regression\n  - ${problems.join("\n  - ")}`); }
   else { pass++; console.log("✓ sparkleclean_new_website regression  (new project wording)"); }
 }
-// Guide title: shape of the rule-based title, and what the guardrail lets through.
 const check = (name, problems) => {
   if (problems.length) { fail++; console.log(`✗ ${name}\n  - ${problems.join("\n  - ")}`); }
   else { pass++; console.log(`✓ ${name}`); }
 };
+// People must not get stuck after Step 1: the design's retail example and a typical teacher story both find real connections.
+const mustFind = {
+  retail_design_example: { skills: ["user_research", "content_design", "testing_and_iterating"], labels: ["User research", "Content design", "Iterating on feedback"], quotes: ["Asked new staff where they got stuck", "rewrote the training into a one-page checklist", "changed it after watching the first week"] },
+  teacher_story: { skills: ["user_research", "content_design", "testing_and_iterating"], labels: ["User research", "Content design", "Iterating on feedback"], quotes: ["Asked students what confused them", "rewrote the worksheet in simpler language", "adjusted the next lesson after seeing how it went"] },
+  teacher_first_person: { skills: ["user_research", "content_design", "testing_and_iterating"], labels: [], quotes: [] },
+};
+for (const [name, want] of Object.entries(mustFind)) {
+  const out = await findProof({ answers: FIXTURES[name].answers });
+  const got = out.candidates.map((c) => c.ux_skill);
+  const problems = want.skills.filter((s) => !got.includes(s)).map((s) => `missing ${s} (found: ${got.join(", ") || "nothing"})`);
+  for (const label of want.labels) if (!out.candidates.some((c) => c.ux_skill_label === label)) problems.push(`no card labelled "${label}"`);
+  for (const q of want.quotes) if (!out.candidates.some((c) => c.quote === q)) problems.push(`no card quoting "${q}"`);
+  check(`finds connections: ${name}  (${got.join(", ")})`, problems);
+}
+
+// Guide title: shape of the rule-based title, and what the guardrail lets through.
 const DANGLING_END = /\b(?:the|a|an|of|to|on|in|for|with|that|when|while|if|than|or|but|how|and|so|because|after|before|our|my|their)$/i;
 for (const [name, f] of Object.entries(FIXTURES)) {
   const title = findProofWithRules(f.answers).guide_title;

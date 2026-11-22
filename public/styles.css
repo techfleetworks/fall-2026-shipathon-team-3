@@ -47,8 +47,7 @@ p { margin: 0 0 16px; max-width: 62ch; text-wrap: pretty; }
 /* Shared header: top bar */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--card); border-bottom: 1px solid var(--border); padding: 18px 40px; }
 .top-left, .top-right { display: flex; align-items: center; gap: 12px; }
-.logo-tile { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: var(--primary); color: var(--primary-foreground); border-radius: var(--radius-md); font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; }
-.brand { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--foreground); }
+.logo { display: block; height: 34px; width: auto; }
 .tagline { font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
 
 /* Shared header: progress bar */
@@ -419,3 +418,11 @@ main.preview { max-width: none; min-height: 100vh; padding: 40px 0; background: 
   .doc-page, .conn-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .conn-box { break-inside: avoid; }
 }
+
+/* No suggestions yet (Step 2), nothing added (Steps 3 and 4), required fields */
+.empty-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.empty-card p { max-width: none; margin: 0; color: var(--foreground); }
+.empty-card .actions { margin: 0; }
+.conn-empty { max-width: none; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
+.doc-page .conn-empty { background: var(--proof-ground); border: 0; padding: 20px; }
+[aria-invalid="true"] { border-color: var(--primary); }
