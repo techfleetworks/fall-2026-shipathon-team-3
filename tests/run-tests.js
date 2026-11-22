@@ -4,7 +4,7 @@
 import { FIXTURES } from "./fixtures.js";
 import { findProof, buildUserText } from "../lib/engine.js";
 import { validate, checkGuideTitle } from "../lib/guardrails.js";
-import { findProofWithRules } from "../lib/rules-engine.js";
+import { findProofWithRules, guideTitleFrom } from "../lib/rules-engine.js";
 
 delete process.env.ANTHROPIC_API_KEY; // force the no-key path
 let pass = 0, fail = 0;
@@ -47,6 +47,34 @@ for (const [name, f] of Object.entries(FIXTURES)) {
 const shifts = ["Shift lead", "Staff swapped shifts through a messy group chat and messages got buried.", "I made a shared swap board and asked everyone to post there first.", "Fewer missed shifts."];
 const shiftsTitle = findProofWithRules(shifts).guide_title;
 check("guide title reads as a summary, not a fragment", /^Improving how staff swapped shifts/.test(shiftsTitle) ? [] : [`got "${shiftsTitle}"`]);
+// The title must come from the FIRST sentence of the situation, even when that sentence has its own "and".
+const servers = ["Restaurant manager",
+  "Servers and kitchen staff swapped shifts through a group chat. Messages got buried, people missed swaps, shifts went uncovered, and the manager had to call around at the last minute.",
+  "I made a shared swap board and asked everyone to post there first.", "Fewer missed shifts."];
+const serversTitle = findProofWithRules(servers).guide_title;
+check("guide title: first sentence of the situation (servers and kitchen staff example)",
+  serversTitle === "Improving how servers and kitchen staff swapped shifts" ? [] : [`got "${serversTitle}"`]);
+check("guide title: passes the guardrail", checkGuideTitle(buildUserText(servers), serversTitle));
+
+// Other first sentences: a noun phrase with its own "and", and a long clause that has to be cut cleanly.
+const titleCases = {
+  "noun phrase joined by and": [["Volunteer", "Sign-in sheets and name tags at our food pantry.", "I moved the allergy line to the top.", ""], "Improving sign-in sheets and name tags at our food pantry"],
+  "long clause cut cleanly": [["Cook", "Customers and coworkers kept asking where the prep list was, and nobody could find it.", "I printed the list on the wall.", ""], "Improving how customers and coworkers kept asking where the prep list was"],
+  "first sentence unusable, next one used": [["Cook", "Messy.", "I printed the prep list and hung it on the wall.", ""], null],
+};
+for (const [name, [answers, expected]] of Object.entries(titleCases)) {
+  const t = guideTitleFrom(answers, []);
+  const problems = [];
+  if (expected && t !== expected) problems.push(`expected "${expected}", got "${t}"`);
+  if (!t) problems.push("no title");
+  else {
+    if (DANGLING_END.test(t)) problems.push(`ends mid-thought: "${t}"`);
+    if (t.split(/\s+/).length > 12) problems.push(`over 12 words: "${t}"`);
+    problems.push(...checkGuideTitle(buildUserText(answers), t));
+  }
+  check(`guide title: ${name}  ("${t}")`, problems);
+}
+
 const reg = buildUserText(FIXTURES.store_manager.answers);
 check("guardrail: action opener + the person's own words passes", ["Redesigning the returns process", "Improving how new cashiers got the steps wrong", "Fixing the returns process at our store"].flatMap((t) => checkGuideTitle(reg, t)));
 const rejected = ["Messages got buried", "Increasing sales at our store", "Improving how managers handled refunds"];
