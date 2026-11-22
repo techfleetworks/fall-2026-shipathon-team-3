@@ -3,6 +3,7 @@
 Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `README.md`, `package.json`. Only the review suggestions step (`public/app.js`, `public/styles.css`) has been changed since. I did not open `lib/*` or the tests, so I haven't checked engine and guardrail details.
 
 ## Matches the brief
+- **Step 1 form (done, matches Figma):** four fields (role, situation, what you did, what changed) with the design's labels and placeholders, the "not saved" warning box, "Back to home" / "See suggestions", and the right sidebar. The old "what you had to decide" question, job-title field and character counters are gone. The API, AI prompt, rule-based engine, guardrail tests, guide, Copy as text and Word export all use the four fields. The guide now shows Background, The problem, What I did and What changed from the user's own words, above the added connections. The API now rejects anything but 4 answers.
 - **Review suggestions step (done, matches Figma):** each card has a plain-words title (built only from the user's own words, in both the AI and rule-based paths, and checked by the guardrails), a "Not added yet" / "Added to guide" / "Skipped" badge, the skill chip, an "About this connection" link that opens a small panel (reasoning, Tech Fleet attribution, Done), and the "Why we suggested this" box. Buttons: Add to guide / Edit first / Skip; added cards get a primary "Remove from guide"; Undo shows only on skipped cards. Several suggestions can be added. The "Included in your guide" panel lists added items in a What I did | What it shows table with an empty message, and the green note reads "Undecided and skipped connections stay out of your guide. You can change your choices before leaving." Continuing with nothing added shows "Choose at least one connection to continue." The next screen, Copy as text and the Word export include every added item. The intro sentence, the "Found by matching" line, "Your answer to:" and the case-study label are gone from this screen.
 - No login, no database; state is in memory only. There is a "nothing is saved" footer and a `beforeunload` warning.
 - Serverless function (`api/proof-candidates.js`, Vercel-style) with the AI key kept server-side.
@@ -30,10 +31,9 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 ## Different from the brief
 - **Stack:** vanilla JS, no build step, no React/Vite (the brief says React + Vite).
 - **Flow:** 3 steps, not 4. The brief's steps 3 (guide) and 4 (copy/download) are combined on one screen. The brief has Add experience → Review suggestions → Proof guide → Copy & download.
-- **Input form:** 5 questions (task, who it was for, steps, decisions, what changed) plus a "Job title (optional)". The brief has 4 fields: role, situation/problem, what you did, what changed.
 - **Suggestions:** fields are `ux_skill_label`/`why_it_matters`/`could_become`, not the brief's `title`/`skill`/`why`.
 - **Download:** Word `.docx` loaded from a CDN, not PDF.
 - **Extras not in the brief:** gap questions, a privacy checkbox, and a "what done looks like" checklist.
 - **Copy and names:** product is called "Proof from past work", not "Proof". The wording differs from the Figma copy.
-- **Short input rule:** requires 2 of 5 answers filled in, not the brief's under 20 words in "What did you do".
+- **Short input rule:** needs 2 of the 3 non-role fields filled in, not the brief's under 20 words in "What did you do". The engine also asks for more detail when the total is under 20 words.
 - **Fallback:** the rule-based engine runs without an API key, instead of the brief's 3 fixed mock connections.

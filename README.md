@@ -2,7 +2,7 @@
 
 Proof helps UX-trained career changers turn one piece of past, non-UX work into evidence an employer can judge, using only their own words.
 
-The flow is: Welcome → describe past work through five questions → review proof candidates → fill gaps and complete a privacy check → copy the result or download it as a Word document.
+The flow is: Welcome → describe past work in four fields (role, situation, what you did, what changed) → review proof candidates → fill gaps and complete a privacy check → copy the result or download it as a Word document.
 
 ## Setup
 

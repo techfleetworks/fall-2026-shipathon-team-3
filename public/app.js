@@ -2,11 +2,10 @@
 // State lives in memory only (MVP #1 has no accounts or saving).
 
 const QUESTIONS = [
-  { label: "One task or project you handled in a past job", hint: "Describe the task, not your job title. Example: “fixing how returns worked at our store.”" },
-  { label: "Who it was for, and what they were struggling with", hint: "Customers, coworkers, patients, volunteers… What got in their way?" },
-  { label: "What you did, step by step", hint: "Plain steps are perfect: “I watched…, then I asked…, then I changed…”" },
-  { label: "What you had to decide along the way, and why", hint: "Any choice counts, even a small one. What did you pick, and what did you pass on?" },
-  { label: "What changed afterward", hint: "“Not sure” is a fine answer. Don’t guess numbers." },
+  { label: "What was your role then? (optional)", placeholder: "Retail store manager" },
+  { label: "What was the situation or problem?", placeholder: "New staff kept making mistakes at the register in their first weeks.", height: 80 },
+  { label: "What did you do, step by step?", placeholder: "Asked new staff where they got stuck, rewrote the training into a one-page checklist, and changed it after watching the first week.", height: 104 },
+  { label: "What changed because of it?", placeholder: "Fewer people asked me for help at the register after the first week.", height: 72 },
 ];
 
 const FORMAT_LABELS = {
@@ -15,8 +14,7 @@ const FORMAT_LABELS = {
 };
 
 const state = {
-  answers: ["", "", "", "", ""],
-  title: "",
+  answers: ["", "", "", ""], // role, situation, what I did, what changed
   result: null,
   decisions: {},      // candidate id -> "added" | "skipped" (absent = undecided)
   edits: {},          // candidate id -> edited explanation
@@ -47,8 +45,8 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
-function show(nodes, step, wide = false) {
-  mainEl.classList.toggle("wide", wide);
+function show(nodes, step, layout = "") {
+  mainEl.className = layout === true ? "wide" : layout;
   screenEl.replaceChildren(...[nodes].flat());
   if (step) {
     progressEl.hidden = false;
@@ -93,45 +91,51 @@ function renderWelcome() {
 function renderDescribe(errorText) {
   const fields = QUESTIONS.map((q, i) => {
     const id = `q${i + 1}`;
-    const area = h("textarea", { id, name: id, maxlength: "2000", "aria-describedby": `${id}-hint` });
-    area.value = state.answers[i];
-    const count = h("span", { class: "count", "aria-hidden": "true" }, `${area.value.length} / 2000`);
-    area.addEventListener("input", () => { state.answers[i] = area.value; count.textContent = `${area.value.length} / 2000`; });
-    return h("div", { class: "field" },
-      h("label", { for: id }, q.label),
-      h("span", { class: "hint", id: `${id}-hint` }, q.hint),
-      area, count);
+    const input = q.height
+      ? h("textarea", { id, name: id, maxlength: "2000", placeholder: q.placeholder, style: `height:${q.height}px` })
+      : h("input", { type: "text", id, name: id, maxlength: "200", placeholder: q.placeholder });
+    input.value = state.answers[i];
+    input.addEventListener("input", () => { state.answers[i] = input.value; });
+    return h("div", { class: "field" }, h("label", { for: id }, q.label), input);
   });
 
-  const title = h("input", { type: "text", id: "title", maxlength: "100", "aria-describedby": "title-hint" });
-  title.value = state.title;
-  title.addEventListener("input", () => { state.title = title.value; });
-
-  const submit = h("button", { class: "primary", type: "submit" }, "Find proof in my answers");
+  const submit = h("button", { class: "primary", type: "submit" }, "See suggestions");
   const status = h("p", { class: "error", role: "alert" }, errorText || "");
 
-  const form = h("form", { novalidate: true, onsubmit: async (e) => {
+  const form = h("form", { class: "form-stack", novalidate: true, onsubmit: async (e) => {
       e.preventDefault();
-      const filled = state.answers.filter((a) => a.trim()).length;
-      if (filled < 2) { status.textContent = "Answer at least two questions, especially what you did, so there’s something real to work with."; return; }
+      // The role (first field) is optional, so it doesn't count toward the minimum.
+      const filled = state.answers.slice(1).filter((a) => a.trim()).length;
+      if (filled < 2) { status.textContent = "Fill in at least two of the three questions, especially what you did, so there’s something real to work with."; return; }
       submit.disabled = true;
       submit.replaceChildren(h("span", { class: "loading" }, "Reading your answers…"));
       status.textContent = "";
       await fetchProof();
     } },
-    h("h2", {}, "Describe one piece of past work"),
-    h("p", {}, "Pick something you actually did, in any job. Write the way you’d tell a friend. There’s no need to use UX words."),
-    ...fields,
-    h("div", { class: "field" },
-      h("label", { for: "title" }, "Job title (optional)"),
-      h("span", { class: "hint", id: "title-hint" }, "Only for context. Your proof comes from what you did, not your title."),
-      title),
+    h("div", { class: "form-panel" }, ...fields),
     status,
-    h("div", { class: "actions" },
-      submit,
-      h("button", { class: "quiet", type: "button", onclick: renderWelcome }, "Back")));
+    h("div", { class: "button-row" },
+      h("button", { type: "button", onclick: () => renderWelcome() }, "Back to home"),
+      submit));
 
-  show(form, 1);
+  show(h("div", { class: "form-layout" },
+    h("div", { class: "form-main" },
+      h("div", { class: "form-head" },
+        h("p", { class: "eyebrow" }, "Step 1"),
+        h("h1", {}, "Tell us about one piece of work from your past field"),
+        h("p", { class: "intro" }, "Describe what you did, not your job title. Messy notes are fine. We only use what you write.")),
+      h("div", { class: "warn-box" },
+        h("p", { class: "warn-title" }, "Your experience is not saved automatically"),
+        h("p", {}, "Keep this tab open. Closing or refreshing will lose your work. You can copy or download your guide at the end.")),
+      form),
+    h("aside", { class: "form-side" },
+      h("div", { class: "side-box" },
+        h("p", { class: "side-title" }, "Your experience"),
+        h("p", {}, "Your own words, before any connections are suggested.")),
+      h("div", { class: "side-card" },
+        h("p", { class: "side-title" }, "Good starting points"),
+        h("p", {}, "A process you improved, a tool you helped people adopt, or a problem you solved for customers or coworkers.")))),
+    1, "wide form");
 }
 
 async function fetchProof() {
@@ -139,7 +143,7 @@ async function fetchProof() {
     const res = await fetch("/api/proof-candidates", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ answers: state.answers, title: state.title }),
+      body: JSON.stringify({ answers: state.answers }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
@@ -315,8 +319,21 @@ function allGaps() {
   return [...new Set(addedCandidates().flatMap((c) => c.missing || []))];
 }
 
+// The person's own words from the form, in the order the guide shows them.
+function storySections() {
+  const [role, problem, did, changed] = state.answers.map((a) => a.trim());
+  return [
+    ["Background", role],
+    ["The problem", problem],
+    ["What I did", did],
+    ["What changed", changed],
+  ].filter(([, text]) => text);
+}
+
 function proofAsText() {
   const lines = ["Proof from my past work", ""];
+  storySections().forEach(([label, text]) => lines.push(`${label}:`, text, ""));
+  lines.push("How my work connects to UX skills:", "");
   addedCandidates().forEach((c, i) => {
     lines.push(
       `${i + 1}. Skill it shows: ${c.ux_skill_label}`,
@@ -357,7 +374,8 @@ function proofParts() {
   const gaps = allGaps().filter((q) => state.gapAnswers[q]?.trim())
     .map((q) => ({ heading: q, text: state.gapAnswers[q].trim() }));
   return {
-    title: `Proof from my past work: ${state.answers[0].trim().replace(/[.!]+$/, "") || "one piece of work"}`,
+    title: state.answers[0].trim() ? `Proof from my past work: ${state.answers[0].trim().replace(/[.!]+$/, "")}` : "Proof from my past work",
+    sections: storySections(),
     items: addedCandidates().map((c) => ({
       skill: c.ux_skill_label,
       format: FORMAT_LABELS[c.could_become] || "",
@@ -379,6 +397,8 @@ async function proofAsDocx() {
   const children = [
     new d.Paragraph({ heading: d.HeadingLevel.TITLE, children: [new d.TextRun(p.title)] }),
   ];
+  for (const [label, text] of p.sections) children.push(heading(label), ...paras(text));
+  children.push(heading("How my work connects to UX skills"));
   for (const item of p.items) {
     children.push(
       new d.Paragraph({ children: [new d.TextRun({ text: "Skill it shows: ", bold: true }), new d.TextRun(item.skill)] }),
@@ -424,7 +444,7 @@ async function proofAsDocx() {
 }
 
 function fileSlug() {
-  const base = (state.answers[0] || "my-proof").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  const base = (state.answers[0].trim() || state.answers[1] || "my-proof").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   return `${base || "my-proof"}.docx`;
 }
 
@@ -462,6 +482,8 @@ function renderResult() {
   show([
     h("h2", {}, "Your proof"),
     h("p", {}, "This is yours to keep. Fill in what only you know, then copy it or download it as a Word file."),
+    h("article", { class: "proof" },
+      ...storySections().flatMap(([label, text]) => [h("h3", {}, label), h("p", {}, text)])),
     ...added.map((c) => h("article", { class: "proof" },
       h("p", { class: "skill" }, c.ux_skill_label),
       h("p", { class: "voice" }, h("mark", {}, `“${c.quote}”`)),
@@ -497,7 +519,7 @@ function renderResult() {
       h("button", { class: "quiet", onclick: renderProof }, "Back to suggestions"),
       h("button", { class: "quiet", onclick: () => {
           if (!confirm("Start over? Your answers and proof will be cleared.")) return;
-          Object.assign(state, { answers: ["", "", "", "", ""], title: "", result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
+          Object.assign(state, { answers: ["", "", "", ""], result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
           renderWelcome();
         } }, "Start over")),
   ], 3);

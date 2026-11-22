@@ -1,5 +1,5 @@
 // Vercel server function: POST /api/proof-candidates
-// Body: { answers: [five strings], title?: string }
+// Body: { answers: [role, situation, what you did, what changed] }
 import { cleanInput, findProof, InputError } from "../lib/engine.js";
 
 export default async function handler(req, res) {

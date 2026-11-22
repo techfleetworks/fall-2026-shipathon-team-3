@@ -8,8 +8,8 @@ import { validate } from "../lib/guardrails.js";
 delete process.env.ANTHROPIC_API_KEY; // force the no-key path
 let pass = 0, fail = 0;
 for (const [name, f] of Object.entries(FIXTURES)) {
-  const out = await findProof({ answers: f.answers, title: f.title });
-  const problems = validate(buildUserText(f.answers, f.title), out);
+  const out = await findProof({ answers: f.answers });
+  const problems = validate(buildUserText(f.answers), out);
   if (out.source !== "rules") problems.push(`expected source rules, got ${out.source}`);
   if (!f.expect.includes(out.status)) problems.push(`status ${out.status}, expected ${f.expect.join(" or ")}`);
   if (problems.length) { fail++; console.log(`✗ ${name}\n  - ${problems.join("\n  - ")}`); }
@@ -17,7 +17,7 @@ for (const [name, f] of Object.entries(FIXTURES)) {
   if (process.env.VERBOSE) console.log(JSON.stringify(out, null, 2));
 }
 
-const sparkle = await findProof({ answers: FIXTURES.sparkleclean_new_website.answers, title: FIXTURES.sparkleclean_new_website.title });
+const sparkle = await findProof({ answers: FIXTURES.sparkleclean_new_website.answers });
 const sparkleInfo = sparkle.candidates.find((candidate) => candidate.ux_skill === "information_architecture");
 if (!sparkleInfo) { fail++; console.log("✗ sparkleclean_new_website regression\n  - missing information architecture candidate"); }
 else {

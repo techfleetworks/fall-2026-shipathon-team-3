@@ -12,7 +12,7 @@ const RUNS = Number(process.env.RUNS || 1);
 let pass = 0, fail = 0;
 for (const [name, f] of Object.entries(FIXTURES)) {
   for (let r = 1; r <= RUNS; r++) {
-    const userText = buildUserText(f.answers, f.title);
+    const userText = buildUserText(f.answers);
     let out, problems = [];
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {

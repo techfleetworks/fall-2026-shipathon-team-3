@@ -71,12 +71,12 @@ main.wide { max-width: none; padding: 56px 64px 64px; }
 .hero-voice { margin: 24px 0 8px; }
 
 /* Forms */
-.field { margin-bottom: 24px; }
-.field label { display: block; font-weight: 600; margin-bottom: 2px; }
-.field .hint { display: block; color: var(--muted-foreground); font-size: 14px; line-height: 21px; margin-bottom: 8px; }
-textarea, input[type="text"] { width: 100%; font: 400 14px/21px var(--font-body); color: var(--foreground); background: var(--card); border: 2px solid var(--input); border-radius: var(--radius-md); padding: 12px 14px; }
-textarea { min-height: 104px; resize: vertical; }
-.count { display: block; text-align: right; font-size: 12px; line-height: 16px; color: var(--muted-foreground); margin-top: 4px; }
+.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.field label { display: block; font: 400 16px/26px var(--font-body); color: var(--foreground); }
+textarea, input[type="text"] { width: 100%; font: 400 16px/26px var(--font-body); color: var(--foreground); background: var(--card); border: 1.5px solid var(--input); border-radius: var(--radius-md); padding: 12px 14px; }
+input[type="text"] { height: 48px; }
+textarea { min-height: 72px; resize: vertical; }
+textarea::placeholder, input::placeholder { color: var(--muted-foreground); opacity: 1; }
 
 /* Buttons: outline (default), primary, ghost (.quiet); default 48px, small 40px (.sm) */
 .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
@@ -90,6 +90,26 @@ button:disabled { opacity: .55; cursor: progress; }
 /* Status badge */
 .badge { display: inline-block; padding: 5px 12px; border-radius: var(--radius-full); font: 700 12px/16px var(--font-body); background: var(--secondary); color: var(--muted-foreground); white-space: nowrap; }
 .badge-added { background: var(--accent); color: var(--accent-foreground); }
+
+/* Step 1 layout */
+main.wide.form { padding: 56px 80px 64px; }
+.form-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; align-items: start; }
+.form-main, .form-stack { display: flex; flex-direction: column; gap: 20px; }
+.form-head { display: flex; flex-direction: column; gap: 8px; }
+.form-head p { margin: 0; }
+.form-head .intro { color: var(--ink-soft); }
+.warn-box { background: var(--secondary); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 21px; color: var(--foreground); }
+.warn-box p { margin: 0; }
+.warn-title { font-weight: 600; }
+.form-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+.form-panel .field { margin: 0; }
+.form-stack > .error { margin: 0; }
+.button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.form-side { display: flex; flex-direction: column; gap: 16px; }
+.side-box { background: var(--secondary); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.side-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.side-box p, .side-card p { margin: 0; font-size: 14px; line-height: 21px; color: var(--ink-soft); }
+.side-box .side-title, .side-card .side-title { font: 400 16px/26px var(--font-body); color: var(--foreground); }
 
 /* Step 2 layout */
 .eyebrow { font: 600 12px/16px var(--font-body); letter-spacing: .96px; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 8px; }
@@ -167,8 +187,8 @@ button.link { height: auto; padding: 0; border: 0; background: none; color: var(
 @media (prefers-reduced-motion: reduce) { .loading::before { animation: none; } }
 
 @media (max-width: 960px) {
-  .review-layout { grid-template-columns: 1fr; }
-  main.wide { padding: 32px 24px 48px; }
+  .review-layout, .form-layout { grid-template-columns: 1fr; }
+  main.wide, main.wide.form { padding: 32px 24px 48px; }
   .progress { padding: 16px 24px; flex-direction: column; align-items: flex-start; }
   .top { padding: 14px 24px; }
 }
