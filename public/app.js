@@ -25,7 +25,8 @@ const screenEl = document.getElementById("screen");
 const progressEl = document.getElementById("progress");
 const progressLabel = document.getElementById("progress-label");
 const progressSteps = document.getElementById("progress-steps");
-document.getElementById("home-btn").addEventListener("click", () => renderWelcome());
+// Home asks first once the person has entered anything.
+document.getElementById("home-btn").addEventListener("click", () => { if (hasEnteredAnything()) openLeaveModal(); else renderWelcome(); });
 const mainEl = document.getElementById("main");
 const topEl = document.querySelector(".top");
 const footEl = document.querySelector(".foot");
@@ -70,11 +71,201 @@ function show(nodes, step, layout = "", { noTop = false } = {}) {
   else mainEl.focus({ preventScroll: true });
 }
 
+// ---------- Pop-ups: one shared component (POPUPS-DESIGN.md) ----------
+// openModal({ label, heading, content, buttons, returnTo, initialFocus }) shows one dialog at a time.
+// Each button is { text, primary, escape, onclick }: clicking closes the dialog, then runs onclick.
+// Escape clicks the button marked `escape` (the safe action), or just closes if none is marked.
+const modalMsg = (text) => h("p", { class: "modal-msg" }, text);
+const modalLine = (text) => h("p", { class: "modal-line" }, text);
+const MODAL_LABEL = "Your work, your choice";
+let activeModal = null;
+
+function openModal({ label, heading, content = [], buttons = [], returnTo, initialFocus }) {
+  // Replacing a dialog (for example loading -> failed) keeps the original place to return focus to.
+  if (activeModal) { returnTo ??= activeModal.returnTo; activeModal.dispose(); }
+  returnTo ??= document.activeElement;
+
+  const btnEls = buttons.map((b) => h("button", {
+    type: "button",
+    class: b.primary ? "primary" : null,
+    onclick: () => { close(); b.onclick?.(); },
+  }, b.text));
+  const box = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-title", tabindex: "-1" },
+    label ? h("p", { class: "modal-label" }, label) : null,
+    h("h2", { id: "modal-title" }, heading),
+    ...content,
+    h("div", { class: "modal-buttons" }, btnEls));
+  const backdrop = h("div", { class: "modal-backdrop" }, box);
+
+  // Everything behind the dialog is inert (no focus, no clicks, hidden from screen readers).
+  const behind = [topEl, progressEl, mainEl, footEl];
+  behind.forEach((el) => { el.inert = true; });
+
+  const onKey = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      const i = buttons.findIndex((b) => b.escape);
+      if (i >= 0) btnEls[i].click(); else close();
+    } else if (e.key === "Tab") {
+      const items = [...box.querySelectorAll("button, textarea, input, a[href]")].filter((el) => !el.disabled);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (!box.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", onKey, true);
+
+  const dispose = () => {
+    document.removeEventListener("keydown", onKey, true);
+    behind.forEach((el) => { el.inert = false; });
+    backdrop.remove();
+    if (activeModal === modal) activeModal = null;
+  };
+  const close = () => {
+    dispose();
+    if (returnTo?.isConnected && !returnTo.disabled) returnTo.focus({ preventScroll: true });
+  };
+  const modal = { close, dispose, returnTo };
+  activeModal = modal;
+
+  document.body.append(backdrop);
+  (initialFocus || btnEls[0] || box).focus();
+  return modal;
+}
+
+const hasEnteredAnything = () => state.answers.some((a) => a.trim());
+const wordsIn = (text) => text.split(/\s+/).filter(Boolean).length;
+
+// Moves back to the experience form without losing what was typed. Already on it? Just focus the main field.
+function backToExperience() {
+  const field = document.getElementById("q3");
+  if (field) field.focus(); else renderDescribe();
+}
+
+// 1. Before you begin: every Start button on Home.
+function openBeginModal() {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "Before you begin",
+    content: [modalMsg("There is no autosave in this version. Keep this tab open, and copy or download your guide before you close or refresh.")],
+    buttons: [
+      { text: "Not now", escape: true },
+      { text: "Start experience", primary: true, onclick: () => renderDescribe() },
+    ],
+  });
+}
+
+// 2. Leave this session?: Leave session on Step 4, and Home in the header once something is entered.
+function openLeaveModal() {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "Leave this session?",
+    content: [modalMsg("Your experience and guide are not saved. If you haven’t copied or downloaded your guide, leaving will lose your work.")],
+    buttons: [
+      { text: "Stay here", primary: true, escape: true },
+      { text: "Leave anyway", onclick: () => { resetAll(); renderWelcome(); } },
+    ],
+  });
+}
+
+// 4. Add a little more detail: the answers are too short.
+function openTooShortModal() {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "Add a little more detail",
+    content: [modalMsg("Describe the situation and at least one specific action you took. For example: “I asked new staff where they got stuck.” Your experience has not been cleared.")],
+    buttons: [{ text: "Back to experience", primary: true, escape: true, onclick: backToExperience }],
+  });
+}
+
+// 5. No connections found yet: the engine returned zero suggestions.
+function openNoConnectionsModal() {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "No connections found yet",
+    content: [modalMsg("There isn’t enough specific evidence to suggest a connection confidently. Add what you did, who it helped, and what changed. Nothing will be invented.")],
+    buttons: [
+      { text: "Edit experience", primary: true, escape: true, onclick: backToExperience },
+      { text: "Return home", onclick: () => renderWelcome() },
+    ],
+  });
+}
+
+// 6. We couldn’t find connections right now: processing failed.
+function openFailedModal(retry) {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "We couldn’t find connections right now",
+    content: [modalMsg("Something interrupted processing. Your experience is still on the previous screen. Try again, or return to edit it.")],
+    buttons: [
+      { text: "Try again", primary: true, onclick: retry },
+      { text: "Back to experience", escape: true, onclick: backToExperience },
+    ],
+  });
+}
+
+// 7. Your guide couldn’t be downloaded.
+function openDownloadFailedModal(retry, returnTo) {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "Your guide couldn’t be downloaded",
+    content: [modalMsg("The download didn’t finish. Your guide is still available in this session. Retry, or go back and copy it instead.")],
+    buttons: [
+      { text: "Try again", primary: true, onclick: retry },
+      { text: "Back to guide", escape: true },
+    ],
+    returnTo,
+  });
+}
+
+// 8. Add a connection first: View your proof guide with nothing added.
+function openAddFirstModal() {
+  openModal({
+    label: MODAL_LABEL,
+    heading: "Add a connection first",
+    content: [modalMsg("Your guide only includes the connections you add. Add at least one, then preview your guide. Skipped and undecided connections are left out.")],
+    buttons: [{ text: "Keep reviewing", primary: true, escape: true }],
+  });
+}
+
+// 9. Edit this connection: saves the wording AND adds the connection to the guide.
+function openEditModal(c, onSave) {
+  const area = h("textarea", { id: "edit-field", class: "modal-field" });
+  area.value = explanationOf(c);
+  openModal({
+    heading: "Edit this connection",
+    content: [
+      modalLine(`From your experience: “${c.quote}”`),
+      modalMsg("Keep the wording accurate. Your original experience will not be changed."),
+      h("div", { class: "modal-box" }, h("label", { class: "label", for: "edit-field" }, "Suggested edit"), area),
+    ],
+    buttons: [
+      { text: "Cancel", escape: true },
+      { text: "Save to guide", primary: true, onclick: () => onSave(area.value.trim() || c.why_it_matters) },
+    ],
+    initialFocus: area,
+  });
+}
+
+// 10. About this connection.
+function openAboutModal(c) {
+  openModal({
+    heading: "About this connection",
+    content: [
+      modalMsg(explanationOf(c)),
+      modalLine("Skill source: Tech Fleet Skills & Practices Framework · CC BY 4.0. This explanation describes the connection; it is not a claim of mastery."),
+    ],
+    buttons: [{ text: "Done", primary: true, escape: true }],
+  });
+}
+
 // ---------- Home ----------
 const PRODUCT_NAME = "Proof from past work";
 
 function renderWelcome() {
-  const start = (cls = "primary") => h("button", { class: cls, type: "button", onclick: () => renderDescribe() }, "Start");
+  const start = (cls = "primary") => h("button", { class: cls, type: "button", onclick: () => openBeginModal() }, "Start");
   const chip = (name) => h("p", { class: "chip" }, h("span", { class: "chip-kicker" }, "UX skill"), h("span", { class: "chip-name" }, name));
   const eyebrow = (text) => h("p", { class: "label home-eyebrow" }, text);
   const section = (cls, id, ...kids) => h("section", { class: `home-section ${cls}`, id }, h("div", { class: "home-inner" }, ...kids));
@@ -212,9 +403,7 @@ function renderDescribe(errorText) {
       e.preventDefault();
       // The role (first field) is optional, so it doesn't count toward the minimum.
       const filled = state.answers.slice(1).filter((a) => a.trim()).length;
-      if (filled < 2) { status.textContent = "Fill in at least two of the three questions, especially what you did, so there’s something real to work with."; return; }
-      submit.disabled = true;
-      submit.replaceChildren(h("span", { class: "loading" }, "Reading your answers…"));
+      if (filled < 2) { openTooShortModal(); return; }
       status.textContent = "";
       await fetchProof();
     } },
@@ -245,28 +434,44 @@ function renderDescribe(errorText) {
 }
 
 async function fetchProof() {
+  const controller = new AbortController();
+  // 3. Finding UX connections…: Cancel stops the request and leaves the person where they were, answers kept.
+  const loading = openModal({
+    label: "Please wait",
+    heading: "Finding UX connections…",
+    content: [modalMsg("I’m checking your experience for possible UX connections. Your words stay on the previous screen.")],
+    buttons: [{ text: "Cancel", escape: true, onclick: () => controller.abort() }],
+  });
   try {
     const res = await fetch("/api/proof-candidates", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ answers: state.answers }),
+      signal: controller.signal,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
+    if (controller.signal.aborted) return;
+    loading.close();
+    if (!data.candidates?.length) {
+      // Too little written -> "Add a little more detail". Enough written but nothing to suggest -> "No connections found yet".
+      const tooShort = data.status === "needs_more_detail" && wordsIn(state.answers.join(" ")) < 20;
+      if (tooShort) openTooShortModal(); else openNoConnectionsModal();
+      return;
+    }
     state.result = data;
     state.decisions = {};
-    openAbout.clear();
     state.edits = {};
     state.gapAnswers = {};
     renderProof();
   } catch (err) {
-    renderDescribe(`${err.message} Your answers are still here.`);
+    if (controller.signal.aborted) return; // cancelled on purpose
+    openFailedModal(() => fetchProof()); // replaces the loading pop-up
   }
 }
 
 // ---------- Step 2: Review suggestions ----------
 const STATUS_LABELS = { undecided: "Not added yet", added: "Added to guide", skipped: "Skipped" };
-const openAbout = new Set(); // candidate ids whose "About this connection" panel is open
 const statusOf = (c) => state.decisions[c.id] || "undecided";
 const explanationOf = (c) => state.edits[c.id] ?? c.why_it_matters;
 const addedCandidates = () => (state.result?.candidates || []).filter((c) => state.decisions[c.id] === "added");
@@ -277,13 +482,11 @@ function renderProof() {
   const r = state.result;
   const list = h("ul", { class: "candidates" });
   const panel = h("div", { class: "guide-panel" });
-  const warning = h("p", { class: "error", role: "alert" });
 
   // Re-render the cards and the side panel in place (no scroll jump), then restore focus.
   refreshProof = (focusId) => {
     list.replaceChildren(...r.candidates.map(renderCandidate));
     panel.replaceChildren(...renderIncludedPanel());
-    if (addedCandidates().length) warning.textContent = "";
     const el = focusId && document.getElementById(focusId);
     if (el) el.focus();
   };
@@ -300,7 +503,6 @@ function renderProof() {
     r.follow_up ? renderFollowUp(r.follow_up) : null,
     r.candidates.length ? list : null,
     r.candidates.length ? h("p", { class: "attribution" }, "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0") : null,
-    warning,
   ];
 
   const side = [
@@ -315,10 +517,7 @@ function renderProof() {
     h("div", { class: "actions" },
       h("button", { onclick: () => renderDescribe() }, "Back to experience"),
       r.candidates.length ? h("button", { class: "primary", onclick: () => {
-          if (!addedCandidates().length) {
-            warning.textContent = "Choose at least one connection to continue. Use “Add to guide” on a suggestion that fits your experience.";
-            return;
-          }
+          if (!addedCandidates().length) { openAddFirstModal(); return; }
           renderGuide();
         } }, "View your proof guide") : null));
 
@@ -350,8 +549,6 @@ function renderFollowUp(fu) {
   const btn = h("button", { class: "primary", onclick: async () => {
       if (!area.value.trim()) { area.focus(); return; }
       state.answers[2] = [state.answers[2], area.value.trim()].filter(Boolean).join("\n");
-      btn.disabled = true;
-      btn.replaceChildren(h("span", { class: "loading" }, "Reading your answers…"));
       await fetchProof();
     } }, "Add this and try again");
   return h("section", { class: "notice" },
@@ -366,19 +563,17 @@ function renderCandidate(c) {
   const status = statusOf(c);
   const whyP = h("p", {}, explanationOf(c));
   const actions = h("div", { class: "card-actions" });
-  const aboutOpen = openAbout.has(c.id);
 
   const decide = (value) => { state.decisions[c.id] = value; refreshProof(`undo-${c.id}`); };
   const undo = () => { delete state.decisions[c.id]; refreshProof(`add-${c.id}`); };
 
-  const editBtn = h("button", { class: "sm", id: `edit-${c.id}`, onclick: () => {
-      const area = h("textarea", { "aria-label": "Edit the explanation" });
-      area.value = explanationOf(c);
-      const save = h("button", { class: "primary sm", onclick: () => { state.edits[c.id] = area.value.trim() || c.why_it_matters; refreshProof(`edit-${c.id}`); } }, "Save wording");
-      whyP.replaceWith(h("div", {}, area, h("div", { class: "card-actions" }, save,
-        h("button", { class: "quiet sm", onclick: () => refreshProof(`edit-${c.id}`) }, "Cancel"))));
-      actions.hidden = true;
-      area.focus();
+  // "Edit first" opens the Edit pop-up. Saving keeps the wording and adds the connection to the guide.
+  const editBtn = h("button", { class: "sm", id: `edit-${c.id}`, "aria-haspopup": "dialog", onclick: () => {
+      openEditModal(c, (wording) => {
+        state.edits[c.id] = wording;
+        state.decisions[c.id] = "added";
+        refreshProof(`undo-${c.id}`);
+      });
     } }, "Edit first");
   const skipBtn = h("button", { class: "quiet sm", onclick: () => decide("skipped") }, "Skip");
 
@@ -390,15 +585,8 @@ function renderCandidate(c) {
     actions.append(h("button", { class: "sm", id: `undo-${c.id}`, onclick: undo }, "Undo"), editBtn);
   }
 
-  const aboutLink = h("button", { class: "link", id: `about-${c.id}`, "aria-expanded": String(aboutOpen),
-    onclick: () => { openAbout.add(c.id); refreshProof(`done-${c.id}`); } }, "About this connection");
-
-  const aboutPanel = aboutOpen ? h("div", { class: "about-panel", role: "region", "aria-label": "About this connection" },
-    h("p", { class: "label" }, "About this connection"),
-    h("p", { class: "about-text" }, h("strong", {}, c.ux_skill_label), ": ", explanationOf(c)),
-    h("p", { class: "attribution" }, "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0"),
-    h("div", { class: "card-actions" },
-      h("button", { class: "sm", id: `done-${c.id}`, onclick: () => { openAbout.delete(c.id); refreshProof(`about-${c.id}`); } }, "Done"))) : null;
+  const aboutLink = h("button", { class: "link", id: `about-${c.id}`, "aria-haspopup": "dialog",
+    onclick: () => openAboutModal(c) }, "About this connection");
 
   return h("li", { class: `candidate ${status}` },
     h("div", { class: "card-head" },
@@ -414,7 +602,6 @@ function renderCandidate(c) {
           h("span", { class: "chip-kicker" }, "UX skill"),
           h("span", { class: "chip-name" }, c.ux_skill_label)),
         aboutLink)),
-    aboutPanel,
     h("div", { class: "info-box" }, h("p", { class: "info-title" }, "Why we suggested this"), whyP),
     actions);
 }
@@ -577,7 +764,6 @@ function connectionsTable() {
 
 function resetAll() {
   Object.assign(state, { answers: ["", "", "", ""], result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
-  openAbout.clear();
 }
 
 function renderGuide() {
@@ -606,6 +792,24 @@ function renderGuide() {
   3, "guide");
 }
 
+// Word export. If it throws, the "Your guide couldn’t be downloaded" pop-up offers a retry.
+async function downloadGuide(btn, status) {
+  btn.disabled = true;
+  status.textContent = "Preparing your Word file…";
+  try {
+    const blob = await proofAsDocx();
+    const filename = fileSlug();
+    const a = h("a", { href: URL.createObjectURL(blob), download: filename });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    status.textContent = `Downloaded ${filename}. It opens in Word, Google Docs and Pages.`;
+  } catch {
+    status.textContent = "";
+    btn.disabled = false; // so focus can return to the button when the pop-up closes
+    openDownloadFailedModal(() => downloadGuide(btn, status), btn);
+  } finally { btn.disabled = false; }
+}
+
 function renderDownload() {
   const [, problem, did] = state.answers.map((a) => a.trim());
   const status = h("p", { class: "status-msg", role: "status" });
@@ -614,11 +818,7 @@ function renderDownload() {
   show(h("div", { class: "download-wrap" },
     h("div", { class: "download-top" },
       h("h1", {}, "Copy & download your proof guide"),
-      h("button", { class: "quiet sm", onclick: () => {
-          if (!confirm("Leave this session? Your experience and guide will be cleared and can’t be recovered.")) return;
-          resetAll();
-          renderWelcome();
-        } }, "Leave session")),
+      h("button", { class: "quiet sm", "aria-haspopup": "dialog", onclick: () => openLeaveModal() }, "Leave session")),
     h("article", { class: "proof-card" },
       guideEyebrow(),
       h("h2", { class: "proof-title" }, guideTitle()),
@@ -633,21 +833,7 @@ function renderDownload() {
               try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
               catch { status.textContent = "Copy didn’t work in this browser. Use Download instead."; }
             } }, "Copy guide"),
-          h("button", { class: "primary", onclick: async (ev) => {
-              const btn = ev.currentTarget;
-              btn.disabled = true;
-              status.textContent = "Preparing your Word file…";
-              try {
-                const blob = await proofAsDocx();
-                const filename = fileSlug();
-                const a = h("a", { href: URL.createObjectURL(blob), download: filename });
-                document.body.append(a); a.click(); a.remove();
-                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-                status.textContent = `Downloaded ${filename}. It opens in Word, Google Docs and Pages.`;
-              } catch {
-                status.textContent = "The Word file couldn’t be made right now. Use Copy instead, or try again.";
-              } finally { btn.disabled = false; }
-            } }, "Download"))),
+          h("button", { class: "primary", onclick: (ev) => downloadGuide(ev.currentTarget, status) }, "Download"))),
       status),
     h("p", { class: "made-with" }, `Made with Proof. ${SKILL_ATTRIBUTION}.`)),
   4, "download", { noTop: true });

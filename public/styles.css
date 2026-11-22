@@ -140,9 +140,6 @@ main.wide.form { padding: 56px 80px 64px; }
 .info-box .info-title { color: var(--foreground); }
 .format { font-size: 14px; line-height: 21px; color: var(--muted-foreground); margin: 0; }
 button.link { height: auto; padding: 0; border: 0; background: none; color: var(--primary); font: 400 14px/21px var(--font-body); text-align: left; align-self: flex-start; }
-.about-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.about-panel p { margin: 0; }
-.about-text { font-size: 14px; line-height: 21px; color: var(--ink-soft); }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .attribution { font-size: 14px; line-height: 21px; color: var(--muted-foreground); margin: 0; }
 
@@ -354,3 +351,18 @@ html { scroll-behavior: smooth; }
 @media (max-width: 640px) {
   .home-links { display: none; }
 }
+
+/* ---------- Pop-ups (POPUPS-DESIGN.md) ---------- */
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(35, 32, 28, 0.4); overflow-y: auto; }
+.modal { width: 560px; max-width: 100%; max-height: 100%; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 24px; display: flex; flex-direction: column; gap: 24px; outline: none; }
+.modal > * { margin: 0; }
+.modal-label { max-width: none; font: 600 12px/16px var(--font-body); letter-spacing: .96px; text-transform: uppercase; color: var(--foreground); }
+.modal h2 { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--foreground); }
+.modal-msg { max-width: none; font: 400 16px/26px var(--font-body); color: var(--foreground); }
+.modal-line { max-width: none; font: 400 14px/21px var(--font-body); color: var(--foreground); overflow-wrap: anywhere; }
+.modal-buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
+.modal-box { background: var(--secondary); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.modal-box .label { margin: 0; }
+.modal-field { width: 100%; min-height: 104px; padding: 0; border: 0; border-radius: 4px; background: transparent; font: 400 16px/26px var(--font-body); color: var(--foreground); resize: vertical; }
+.modal-field:focus-visible { outline: 2px solid var(--input); outline-offset: 4px; }
+@media (max-width: 560px) { .modal-buttons button { flex: 1 1 auto; } }
