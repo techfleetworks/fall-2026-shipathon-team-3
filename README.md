@@ -2,7 +2,7 @@
 
 Proof helps UX-trained career changers turn one piece of past, non-UX work into evidence an employer can judge, using only their own words.
 
-The flow is: Home → describe past work in four fields (role, situation, what you did, what changed) → review suggested connections → view the proof guide → copy it, or download it as a PDF (a print-styled preview that opens the browser's print dialog; choose "Save as PDF").
+The flow is: Home → describe past work in four fields (role, situation, what you did, what changed) → review suggested connections → view the proof guide → copy it, or download it as a PDF (a preview screen, and the PDF is saved straight away as "[guide title].pdf").
 
 ## Setup
 
@@ -48,4 +48,4 @@ Keep API keys out of source control, `.env` files committed to the repository, a
 - No accounts, saved progress, or cross-session persistence.
 - No PDF export, sharing links, analytics, feedback, or mentor collaboration.
 - AI assistance requires an Anthropic API key; the app remains usable without one.
-- The PDF download uses the browser's own print dialog (`window.print()`), so it needs no extra library or internet access. The page's fonts still load from Google Fonts.
+- The PDF download loads html2pdf.js 0.10.2 from cdnjs (pinned, with an integrity hash) when a user downloads, so that action needs internet access. There is no print dialog, so no browser prompt. The text in the PDF is an image of the page, so it can't be selected or searched. The page's fonts load from Google Fonts.

@@ -183,8 +183,8 @@ function openFailedModal(retry) {
   });
 }
 
-// 7. Your guide couldn’t be downloaded: printing the preview threw. "Back to guide" returns to Step 4.
-function openDownloadFailedModal(retry, back) {
+// 7. Your guide couldn’t be downloaded: the PDF could not be made. "Back to guide" returns to Step 4.
+function openDownloadFailedModal(retry, back, returnTo) {
   openModal({
     label: MODAL_LABEL,
     heading: "Your guide couldn’t be downloaded",
@@ -193,6 +193,7 @@ function openDownloadFailedModal(retry, back) {
       { text: "Try again", primary: true, onclick: retry },
       { text: "Back to guide", escape: true, onclick: back },
     ],
+    returnTo,
   });
 }
 
@@ -657,37 +658,121 @@ function renderGuide() {
   3, "guide");
 }
 
-// ---------- Guide document preview + PDF ----------
-// "Download" shows the printable page, then opens the browser's print dialog (choose "Save as PDF").
-// The print CSS in styles.css hides everything except the white document page.
-async function printGuide() {
-  const prevTitle = document.title;
-  const restore = () => { document.title = prevTitle; };
+// ---------- Guide document preview + PDF download ----------
+// "Download" shows the preview, then html2pdf.js (html2canvas + jsPDF) draws the white document page into a
+// one-page A4 PDF and saves it as "[guide title].pdf". No print dialog. The library loads only when needed,
+// from cdnjs at an exact version, and the browser checks it against the hash cdnjs publishes for that file.
+const HTML2PDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js";
+const HTML2PDF_SRI = "sha512-MpDFIChbcXl2QgipQrt1VcPHMldRILetapBl5MPCA9Y8r7qvlwx1/Mc9hNTzY+kS5kX6PdoDq41ws1HiVNLdZA==";
+let html2pdfPromise = null;
+function loadHtml2pdf() {
+  if (window.html2pdf) return Promise.resolve(window.html2pdf);
+  html2pdfPromise ??= new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = HTML2PDF_URL;
+    s.integrity = HTML2PDF_SRI;
+    s.crossOrigin = "anonymous";
+    s.onload = () => (window.html2pdf ? resolve(window.html2pdf) : reject(new Error("html2pdf missing")));
+    s.onerror = () => { html2pdfPromise = null; s.remove(); reject(new Error("html2pdf failed to load")); };
+    document.head.append(s);
+  });
+  return html2pdfPromise;
+}
+
+// The fonts must be loaded before the page is drawn, or the PDF would use fallback fonts.
+async function fontsReady() {
+  const fonts = ["600 52px Fraunces", "600 20px Fraunces", "400 18px Inter", "400 16px Inter", "600 12px Inter", "700 16px Inter"];
+  try { await Promise.all(fonts.map((f) => document.fonts.load(f))); await document.fonts.ready; } catch { /* fall back to whatever is loaded */ }
+}
+
+// "[guide title].pdf", with characters that file systems don't allow turned into spaces.
+function pdfFileName() {
+  const name = guideTitle().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 100).trim();
+  return `${name || `${PRODUCT_NAME} guide`}.pdf`;
+}
+
+// The preview page is A4-shaped (860 x 1216). If a very long guide makes it taller, widen the canvas with white
+// margins so the whole page shrinks to fit on ONE A4 page instead of spilling onto a second.
+function fitToA4(canvas) {
+  if (canvas.height * 210 <= canvas.width * 297) return canvas;
+  const wide = document.createElement("canvas");
+  wide.width = Math.ceil((canvas.height * 210) / 297);
+  wide.height = canvas.height;
+  const ctx = wide.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, wide.width, wide.height);
+  ctx.drawImage(canvas, Math.round((wide.width - canvas.width) / 2), 0);
+  return wide;
+}
+
+let pdfBusy = false;
+async function downloadPdf(button, status) {
+  if (pdfBusy) return;
+  pdfBusy = true;
+  button.disabled = true;
+  button.textContent = "Preparing PDF…";
+  status.textContent = "Preparing your PDF…";
+  let stage = null;
   try {
-    await document.fonts?.ready;
+    const html2pdf = await loadHtml2pdf();
+    await fontsReady();
+    const page = document.querySelector(".doc-page");
+    if (!page) throw new Error("no document page");
+    // Draw a copy fixed at the design's 860px width (hidden behind the page), so the PDF is the same on a phone as on a desktop.
+    // windowWidth makes the copy lay out with the desktop styles even when this screen is narrow.
+    stage = document.createElement("div");
+    stage.setAttribute("aria-hidden", "true");
+    Object.assign(stage.style, { position: "fixed", top: "0", left: "0", zIndex: "-1", pointerEvents: "none" });
+    const copy = page.cloneNode(true);
+    copy.classList.add("pdf-copy"); // desktop page styles that ignore the screen width (see styles.css)
+    Object.assign(copy.style, { width: "860px", maxWidth: "none" });
+    stage.append(copy);
+    document.body.append(stage);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    document.title = guideTitle(); // becomes the default PDF file name
-    window.addEventListener("afterprint", restore, { once: true });
-    window.print();
+    // For this drawing step only, the "page" is the design's 860px wide, which is what sizes the library's drawing area.
+    const canvas = await html2pdf()
+      .set({
+        margin: 0,
+        jsPDF: { unit: "px", format: [860, 1216], orientation: "portrait" },
+        html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 1280, scrollX: 0, scrollY: 0 },
+      })
+      .from(copy).toCanvas().get("canvas");
+    const pdf = await html2pdf()
+      .set({ margin: 0, image: { type: "jpeg", quality: 0.98 }, jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true } })
+      .from(fitToA4(canvas), "canvas").toPdf().get("pdf");
+    const filename = pdfFileName();
+    pdf.save(filename);
+    status.textContent = `Saved ${filename}`;
   } catch {
-    window.removeEventListener("afterprint", restore);
-    restore();
-    openDownloadFailedModal(() => printGuide(), () => renderDownload());
+    status.textContent = "";
+    button.disabled = false; // so focus can come back to it when the pop-up closes
+    openDownloadFailedModal(() => downloadPdf(button, status), () => renderDownload(), button);
+  } finally {
+    stage?.remove();
+    pdfBusy = false;
+    button.disabled = false;
+    button.textContent = "Download PDF";
   }
 }
+
 
 function renderPreview() {
   const role = state.answers[0].trim();
   const [, problem, did] = state.answers.map((a) => a.trim());
   const cell = (heading, text) => text ? h("div", { class: "doc-cell" }, h("h3", {}, heading), h("p", {}, text)) : null;
+  const status = h("p", { class: "preview-status", role: "status" });
+  const pdfButton = h("button", { class: "primary sm", onclick: () => downloadPdf(pdfButton, status) }, "Download PDF");
 
   show(h("div", { class: "preview-wrap" },
     h("div", { class: "preview-head" },
       h("div", { class: "preview-bar" },
-        h("button", { class: "sm", onclick: renderDownload }, "Back to copy & download"),
+        h("div", { class: "preview-actions" },
+          h("button", { class: "sm", onclick: renderDownload }, "Back to copy & download"),
+          pdfButton),
         h("p", { class: "label doc-label" }, "Document preview / 1 page")),
       h("h1", {}, "Your guide, ready to keep."),
-      h("p", { class: "intro" }, "Your guide brings together your experience and the connections you added. Build on it with evidence from your real work.")),
+      h("p", { class: "intro" }, "Your guide brings together your experience and the connections you added. Build on it with evidence from your real work."),
+      status),
     h("article", { class: "doc-page", "aria-label": "Guide document" },
       h("div", { class: "doc-identity" },
         h("p", { class: "label doc-label" }, "UX proof-building guide"),
@@ -711,6 +796,9 @@ function renderPreview() {
           h("p", { class: "label doc-label" }, "01 / 01")))),
     h("p", { class: "preview-foot" }, role ? `Your guide · ${role}` : "Your guide")),
   null, "preview", { noTop: true });
+
+  // Opening the preview from "Download" saves the PDF straight away; "Download PDF" saves it again.
+  downloadPdf(pdfButton, status);
 }
 
 function renderDownload() {
@@ -737,7 +825,7 @@ function renderDownload() {
               try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
               catch { status.textContent = "Copy didn’t work in this browser. Use Download instead."; }
             } }, "Copy guide"),
-          h("button", { class: "primary", onclick: () => { renderPreview(); printGuide(); } }, "Download"))),
+          h("button", { class: "primary", onclick: () => renderPreview() }, "Download"))),
       status),
     h("p", { class: "made-with" }, `Made with ${PRODUCT_NAME}. ${SKILL_ATTRIBUTION}.`)),
   4, "download", { noTop: true });

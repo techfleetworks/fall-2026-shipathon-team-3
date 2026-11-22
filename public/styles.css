@@ -366,7 +366,7 @@ html { scroll-behavior: smooth; }
 .modal-field:focus-visible { outline: 2px solid var(--input); outline-offset: 4px; }
 @media (max-width: 560px) { .modal-buttons button { flex: 1 1 auto; } }
 
-/* ---------- Guide document preview + print ---------- */
+/* ---------- Guide document preview + PDF ---------- */
 main.preview { max-width: none; min-height: 100vh; padding: 40px 0; background: var(--proof-ground); }
 .preview-wrap { width: 860px; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
 .preview-head { display: flex; flex-direction: column; gap: 12px; }
@@ -407,18 +407,6 @@ main.preview { max-width: none; min-height: 100vh; padding: 40px 0; background: 
   .preview-bar { flex-wrap: wrap; }
 }
 
-/* Print: only the white document page, on the paper's own size, with no browser margins. */
-@page { margin: 0; }
-@media print {
-  html, body { background: #fff; }
-  .skip, .top, .progress, .foot, .preview-head, .preview-foot, .modal-backdrop { display: none !important; }
-  main.preview { padding: 0; min-height: 0; background: #fff; }
-  .preview-wrap { width: 100%; max-width: none; gap: 0; }
-  .doc-page { width: 100%; max-width: none; min-height: 99vh; }
-  .doc-page, .conn-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .conn-box { break-inside: avoid; }
-}
-
 /* No suggestions yet (Step 2), nothing added (Steps 3 and 4), required fields */
 .empty-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 22px; display: flex; flex-direction: column; gap: 16px; }
 .empty-card p { max-width: none; margin: 0; color: var(--foreground); }
@@ -426,3 +414,15 @@ main.preview { max-width: none; min-height: 100vh; padding: 40px 0; background: 
 .conn-empty { max-width: none; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
 .doc-page .conn-empty { background: var(--proof-ground); border: 0; padding: 20px; }
 [aria-invalid="true"] { border-color: var(--primary); }
+
+/* Preview header: Back + Download PDF side by side, and a status line under the intro */
+.preview-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.preview-status { max-width: none; font-size: 14px; line-height: 21px; color: var(--success); overflow-wrap: anywhere; }
+.preview-head > .preview-status:empty { margin-top: -12px; }
+
+/* The copy of the page that is drawn into the PDF always uses the desktop design, whatever the screen width */
+.doc-page.pdf-copy { min-height: 1216px; padding: 40px; }
+.doc-page.pdf-copy .doc-cols { grid-template-columns: 1fr 1fr; }
+.doc-page.pdf-copy .doc-title { font-size: 52px; line-height: 56px; }
+/* html2pdf.js centres its drawing area on the screen; pin it to the left edge so the capture is never offset by the window width */
+.html2pdf__container { left: 0 !important; right: auto !important; margin: 0 !important; }
