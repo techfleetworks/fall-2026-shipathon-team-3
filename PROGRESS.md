@@ -1,10 +1,14 @@
 # Progress vs. BUILD-BRIEF.md
 
-Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `README.md`, `package.json`. Only the review suggestions step (`public/app.js`, `public/styles.css`) has been changed since. I did not open `lib/*` or the tests, so I haven't checked engine and guardrail details.
+Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `README.md`, `package.json`. Since then the review suggestions step and the two new guide screens (`public/app.js`, `public/styles.css`, plus the guide title in `lib/`) have changed. I did not open `lib/*` or the tests, so I haven't checked engine and guardrail details.
 
 ## Matches the brief
 - **Step 1 form (done, matches Figma):** four fields (role, situation, what you did, what changed) with the design's labels and placeholders, the "not saved" warning box, "Back to home" / "See suggestions", and the right sidebar. The old "what you had to decide" question, job-title field and character counters are gone. The API, AI prompt, rule-based engine, guardrail tests, guide, Copy as text and Word export all use the four fields. The guide now shows Background, The problem, What I did and What changed from the user's own words, above the added connections. The API now rejects anything but 4 answers.
 - **Review suggestions step (done, matches Figma):** each card has a plain-words title (built only from the user's own words, in both the AI and rule-based paths, and checked by the guardrails), a "Not added yet" / "Added to guide" / "Skipped" badge, the skill chip, an "About this connection" link that opens a small panel (reasoning, Tech Fleet attribution, Done), and the "Why we suggested this" box. Buttons: Add to guide / Edit first / Skip; added cards get a primary "Remove from guide"; Undo shows only on skipped cards. Several suggestions can be added. The "Included in your guide" panel lists added items in a What I did | What it shows table with an empty message, and the green note reads "Undecided and skipped connections stay out of your guide. You can change your choices before leaving." Continuing with nothing added shows "Choose at least one connection to continue." The next screen, Copy as text and the Word export include every added item. The intro sentence, the "Found by matching" line, "Your answer to:" and the case-study label are gone from this screen.
+- **Step 3 "Your proof guide" (done, built to the spec):** shared header with step 3 current and "Step 3 of 4"; eyebrow, h1 and intro; a white guide card (1px border, 20px radius, 40px padding, `--shadow-proof`) with "YOUR GUIDE · BACKGROUND: [role]" (background part left out when there's no role), a 30px bold title, a 2×2 grid of The problem / What I did / What changed plus the dashed tip box, "Connections in your guide" with the What I did | UX skill connection table (header on `--proof-ground`), the Tech Fleet attribution line, and Back to connections | Copy & download. The old gap-question boxes, checklist and privacy checkbox are gone from this screen. Cells with no answer are left out.
+- **Step 4 "Copy & download" (done, built to the spec):** no top header bar, only the progress bar with step 4 current and "Step 4 of 4" (the global footer is hidden too, since the screen has its own footer line). Title row with a ghost "Leave session" (browser `confirm()`, then clears all data and returns to Home), the proof card (Fraunces terracotta title, The problem | What I did columns, same table), the no-autosave reminder, Back to proof guide | Copy guide | Download (existing Word export), and the "Made with Proof…" line.
+- **Guide title:** a short title for the whole story, `guide_title`, comes back from both the AI and rule-based paths. Rules: first usable sentence of the situation, shortened like the card titles. AI: asked for in the system prompt; if it's missing or fails the new `checkGuideTitle` guardrail (≤12 words, words must come from the user's text), the rule-based title replaces it instead of discarding the AI result. Tests check it for every fixture. If a result has no title, the screens fall back to the first added card's title.
+- Tokens `--proof-ground` and `--shadow-proof` added to `:root`.
 - No login, no database; state is in memory only. There is a "nothing is saved" footer and a `beforeunload` warning.
 - Serverless function (`api/proof-candidates.js`, Vercel-style) with the AI key kept server-side.
 - AI step is already wired, with a rule-based fallback (not in the brief) when there's no key or validation fails.
@@ -17,10 +21,8 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 
 ## Missing
 - **Home landing page:** only a simple welcome. Missing the nav with Start, the eyebrow, the example proof card, the three promises, How it works, the Example section, Our approach / Honest limits, the FAQ, the final CTA and the Tech Fleet CC BY 4.0 footer attribution.
-- **Shared header:** no "Nothing invented" label or button, and no 4-step badges.
-- **Step 3 "Your proof guide":** no background/role, problem, what-changed or next-steps tip, and no table of added connections.
-- **Styling gaps vs. STYLE-GUIDE.md:** Home, Step 1 and the result screen still use their old layouts (page titles are 20px, not the 36px h1). The result screen is steps 3 and 4 combined, so it shows "Step 3 of 4".
-- **Step 4 "Copy & download":** no dedicated screen, no "Leave session", no "Keep your summary" reminder.
+- **Styling gaps vs. STYLE-GUIDE.md:** Home still uses its old layout (its title is not yet the design's hero).
+- **Step 4 polish:** Leave session uses a browser `confirm()`, not the Leave session pop-up. The reminder is plain text, not a separate "Keep your summary" card.
 - **Printable guide preview + PDF (`window.print()`).**
 - **Pop-ups:** Before you begin, Leave session, Finding connections (with Cancel), No connections found, Processing failed screens, Download failed, Edit connection modal, About connection panel. (The "Choose a connection" state is inline text, not a modal.) The app only has inline loading text, an inline error and a `confirm()` on start over.
 - **Per-card:** the framework's own definition text is not shown (the About panel shows our reasoning). Edit is still inline, not the brief's Edit connection modal.
@@ -30,10 +32,10 @@ Reviewed `public/app.js`, `public/index.html`, `api/proof-candidates.js`, `READM
 
 ## Different from the brief
 - **Stack:** vanilla JS, no build step, no React/Vite (the brief says React + Vite).
-- **Flow:** 3 steps, not 4. The brief's steps 3 (guide) and 4 (copy/download) are combined on one screen. The brief has Add experience → Review suggestions → Proof guide → Copy & download.
+- **Flow:** now the brief's four steps: Add experience → Review suggestions → Proof guide → Copy & download.
 - **Suggestions:** fields are `ux_skill_label`/`why_it_matters`/`could_become`, not the brief's `title`/`skill`/`why`.
 - **Download:** Word `.docx` loaded from a CDN, not PDF.
-- **Extras not in the brief:** gap questions, a privacy checkbox, and a "what done looks like" checklist.
+- **Extras not in the brief:** gap questions (still produced by the engine and still included in Copy and Word if answered, but no longer shown on any screen). The privacy checkbox and "what done looks like" checklist are removed from the UI.
 - **Copy and names:** product is called "Proof from past work", not "Proof". The wording differs from the Figma copy.
 - **Short input rule:** needs 2 of the 3 non-role fields filled in, not the brief's under 20 words in "What did you do". The engine also asks for more detail when the total is under 20 words.
 - **Fallback:** the rule-based engine runs without an API key, instead of the brief's 3 fixed mock connections.

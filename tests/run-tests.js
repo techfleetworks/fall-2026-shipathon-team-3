@@ -3,7 +3,7 @@
 //   npm test
 import { FIXTURES } from "./fixtures.js";
 import { findProof, buildUserText } from "../lib/engine.js";
-import { validate } from "../lib/guardrails.js";
+import { validate, checkGuideTitle } from "../lib/guardrails.js";
 
 delete process.env.ANTHROPIC_API_KEY; // force the no-key path
 let pass = 0, fail = 0;
@@ -11,6 +11,7 @@ for (const [name, f] of Object.entries(FIXTURES)) {
   const out = await findProof({ answers: f.answers });
   const problems = validate(buildUserText(f.answers), out);
   if (out.source !== "rules") problems.push(`expected source rules, got ${out.source}`);
+  if (out.candidates.length && checkGuideTitle(buildUserText(f.answers), out.guide_title).length) problems.push(`bad guide_title: ${JSON.stringify(out.guide_title)}`);
   if (!f.expect.includes(out.status)) problems.push(`status ${out.status}, expected ${f.expect.join(" or ")}`);
   if (problems.length) { fail++; console.log(`✗ ${name}\n  - ${problems.join("\n  - ")}`); }
   else { pass++; console.log(`✓ ${name}  (${out.status}: ${out.candidates.map((c) => c.ux_skill).join(", ") || "no candidates"})`); }

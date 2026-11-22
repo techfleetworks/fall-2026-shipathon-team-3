@@ -27,6 +27,8 @@ const progressLabel = document.getElementById("progress-label");
 const progressSteps = document.getElementById("progress-steps");
 document.getElementById("home-btn").addEventListener("click", () => renderWelcome());
 const mainEl = document.getElementById("main");
+const topEl = document.querySelector(".top");
+const footEl = document.querySelector(".foot");
 
 // ---------- tiny DOM helper (always uses textContent, never innerHTML) ----------
 function h(tag, attrs = {}, ...children) {
@@ -45,8 +47,10 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
-function show(nodes, step, layout = "") {
+function show(nodes, step, layout = "", { noTop = false } = {}) {
   mainEl.className = layout === true ? "wide" : layout;
+  topEl.hidden = noTop;   // Step 4 has only the progress bar
+  footEl.hidden = noTop;  // and its own footer line
   screenEl.replaceChildren(...[nodes].flat());
   if (step) {
     progressEl.hidden = false;
@@ -213,7 +217,7 @@ function renderProof() {
             warning.textContent = "Choose at least one connection to continue. Use “Add to guide” on a suggestion that fits your experience.";
             return;
           }
-          renderResult();
+          renderGuide();
         } }, "View your proof guide") : null));
 
   show([
@@ -448,82 +452,105 @@ function fileSlug() {
   return `${base || "my-proof"}.docx`;
 }
 
-function renderResult() {
-  const added = addedCandidates();
-  const gapQuestions = allGaps();
-  const status = h("p", { class: "status-msg", role: "status" });
-  const checklist = h("ul", { class: "checklist" });
+// ---------- Steps 3 and 4: the guide, then copy & download ----------
+const SKILL_ATTRIBUTION = "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0";
+const TIP = "Next: gather notes or a checklist, if you have them. Don’t invent missing evidence.";
 
-  const updateChecklist = () => {
-    const gaps = gapQuestions;
-    const filled = gaps.filter((q) => state.gapAnswers[q]?.trim()).length;
-    checklist.replaceChildren(
-      h("li", { class: "met" }, "Uses only your own words"),
-      h("li", { class: "met" }, "Names the skill and why an employer cares"),
-      h("li", { class: gaps.length && filled === gaps.length ? "met" : "" },
-        gaps.length ? "Gaps filled in with details only you know" : "No gaps flagged"),
-      h("li", { class: state.privacyChecked ? "met" : "" }, "Names of people and places removed"));
-  };
+// Short title for the whole story. It comes from the engine (AI or rules); fall back to the first card's title.
+const guideTitle = () => state.result?.guide_title?.trim() || addedCandidates()[0]?.title || "My proof guide";
 
-  const gapFields = gapQuestions.map((q, i) => {
-    const id = `gap${i}`;
-    const area = h("textarea", { id });
-    area.value = state.gapAnswers[q] || "";
-    area.addEventListener("input", () => { state.gapAnswers[q] = area.value; updateChecklist(); });
-    return h("div", { class: "field" }, h("label", { for: id }, q), area);
-  });
-
-  const privacy = h("input", { type: "checkbox", id: "privacy" });
-  privacy.checked = !!state.privacyChecked;
-  privacy.addEventListener("change", () => { state.privacyChecked = privacy.checked; updateChecklist(); });
-
-  updateChecklist();
-
-  show([
-    h("h2", {}, "Your proof"),
-    h("p", {}, "This is yours to keep. Fill in what only you know, then copy it or download it as a Word file."),
-    h("article", { class: "proof" },
-      ...storySections().flatMap(([label, text]) => [h("h3", {}, label), h("p", {}, text)])),
-    ...added.map((c) => h("article", { class: "proof" },
-      h("p", { class: "skill" }, c.ux_skill_label),
-      h("p", { class: "voice" }, h("mark", {}, `“${c.quote}”`)),
-      h("h3", {}, "Why it matters"),
-      h("p", {}, explanationOf(c)),
-      h("p", { class: "format" }, FORMAT_LABELS[c.could_become] || ""))),
-    gapFields.length ? h("section", {}, h("h3", {}, "Needs your input"), ...gapFields) : null,
-    h("h3", {}, "What done looks like"),
-    checklist,
-    h("p", {}, h("label", {}, privacy, " I’ve removed names of people and places I wouldn’t want shared")),
-    h("div", { class: "actions" },
-      h("button", { class: "primary", onclick: async () => {
-          try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
-          catch { status.textContent = "Copy didn’t work in this browser. Use Download instead."; }
-        } }, "Copy as text"),
-      h("button", { onclick: async (ev) => {
-          const btn = ev.currentTarget;
-          btn.disabled = true;
-          status.textContent = "Preparing your Word file…";
-          try {
-            const blob = await proofAsDocx();
-            const filename = fileSlug();
-            const a = h("a", { href: URL.createObjectURL(blob), download: filename });
-            document.body.append(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-            status.textContent = `Downloaded ${filename}. It opens in Word, Google Docs and Pages.`;
-          } catch {
-            status.textContent = "The Word file couldn’t be made right now. Use Copy instead, or try again.";
-          } finally { btn.disabled = false; }
-        } }, "Download Word file (.docx)")),
-    status,
-    h("div", { class: "actions" },
-      h("button", { class: "quiet", onclick: renderProof }, "Back to suggestions"),
-      h("button", { class: "quiet", onclick: () => {
-          if (!confirm("Start over? Your answers and proof will be cleared.")) return;
-          Object.assign(state, { answers: ["", "", "", ""], result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
-          renderWelcome();
-        } }, "Start over")),
-  ], 3);
+function guideEyebrow() {
+  const role = state.answers[0].trim();
+  return h("p", { class: "label" }, role ? `Your guide · Background: ${role}` : "Your guide");
 }
+
+// "What I did | UX skill connection": one row per added connection.
+function connectionsTable() {
+  return h("table", { class: "conn-table" },
+    h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "What I did"), h("th", { scope: "col" }, "UX skill connection"))),
+    h("tbody", {}, addedCandidates().map((c) => h("tr", {},
+      h("td", {}, `“${c.quote}”`),
+      h("td", {}, c.ux_skill_label)))));
+}
+
+function resetAll() {
+  Object.assign(state, { answers: ["", "", "", ""], result: null, decisions: {}, edits: {}, gapAnswers: {}, privacyChecked: false });
+  openAbout.clear();
+}
+
+function renderGuide() {
+  const [, problem, did, changed] = state.answers.map((a) => a.trim());
+  const cell = (heading, text) => text ? h("div", { class: "guide-cell" }, h("h3", {}, heading), h("p", {}, text)) : null;
+
+  show(h("div", { class: "guide-wrap" },
+    h("div", { class: "guide-head" },
+      h("p", { class: "eyebrow" }, "Step 3 · View your proof guide"),
+      h("h1", {}, "Your proof guide"),
+      h("p", { class: "intro" }, "Only the connections you added are included. Go back to edit your choices, or continue to copy or download your guide.")),
+    h("article", { class: "guide-card" },
+      guideEyebrow(),
+      h("h2", { class: "guide-title" }, guideTitle()),
+      h("div", { class: "guide-grid" },
+        cell("The problem", problem),
+        cell("What I did", did),
+        cell("What changed", changed),
+        h("p", { class: "tip-box" }, TIP)),
+      h("h3", { class: "guide-sub" }, "Connections in your guide"),
+      connectionsTable(),
+      h("p", { class: "attribution" }, SKILL_ATTRIBUTION)),
+    h("div", { class: "button-row" },
+      h("button", { onclick: renderProof }, "Back to connections"),
+      h("button", { class: "primary", onclick: renderDownload }, "Copy & download"))),
+  3, "guide");
+}
+
+function renderDownload() {
+  const [, problem, did] = state.answers.map((a) => a.trim());
+  const status = h("p", { class: "status-msg", role: "status" });
+  const cell = (heading, text) => text ? h("div", { class: "proof-cell" }, h("h3", {}, heading), h("p", {}, text)) : null;
+
+  show(h("div", { class: "download-wrap" },
+    h("div", { class: "download-top" },
+      h("h1", {}, "Copy & download your proof guide"),
+      h("button", { class: "quiet sm", onclick: () => {
+          if (!confirm("Leave this session? Your experience and guide will be cleared and can’t be recovered.")) return;
+          resetAll();
+          renderWelcome();
+        } }, "Leave session")),
+    h("article", { class: "proof-card" },
+      guideEyebrow(),
+      h("h2", { class: "proof-title" }, guideTitle()),
+      h("div", { class: "proof-cols" }, cell("The problem", problem), cell("What I did", did)),
+      connectionsTable()),
+    h("p", { class: "reminder" }, "No autosave: copy or download your guide before closing this tab. Your experience and guide won’t be kept after you leave."),
+    h("div", { class: "download-actions" },
+      h("div", { class: "button-row" },
+        h("button", { onclick: renderGuide }, "Back to proof guide"),
+        h("div", { class: "actions" },
+          h("button", { onclick: async () => {
+              try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
+              catch { status.textContent = "Copy didn’t work in this browser. Use Download instead."; }
+            } }, "Copy guide"),
+          h("button", { class: "primary", onclick: async (ev) => {
+              const btn = ev.currentTarget;
+              btn.disabled = true;
+              status.textContent = "Preparing your Word file…";
+              try {
+                const blob = await proofAsDocx();
+                const filename = fileSlug();
+                const a = h("a", { href: URL.createObjectURL(blob), download: filename });
+                document.body.append(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                status.textContent = `Downloaded ${filename}. It opens in Word, Google Docs and Pages.`;
+              } catch {
+                status.textContent = "The Word file couldn’t be made right now. Use Copy instead, or try again.";
+              } finally { btn.disabled = false; }
+            } }, "Download"))),
+      status),
+    h("p", { class: "made-with" }, `Made with Proof. ${SKILL_ATTRIBUTION}.`)),
+  4, "download", { noTop: true });
+}
+
 
 window.addEventListener("beforeunload", (e) => {
   if (state.answers.some((a) => a.trim())) { e.preventDefault(); e.returnValue = ""; }

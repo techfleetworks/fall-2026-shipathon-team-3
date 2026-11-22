@@ -13,6 +13,8 @@
   --accent: #ddefe4;
   --accent-foreground: #1f5a3e;
   --success: #2f7a55;
+  --proof-ground: #f4f2ef;
+  --shadow-proof: 0 12px 32px rgba(35,32,28,0.08);
   --radius-md: 12px;
   --radius-xl: 20px;
   --radius-full: 999px;
@@ -170,16 +172,44 @@ button.link { height: auto; padding: 0; border: 0; background: none; color: var(
 .error { color: var(--primary); font-weight: 600; }
 .missing { margin: 8px 0 0; padding-left: 20px; color: var(--muted-foreground); font-size: 14px; line-height: 21px; }
 
-/* Result */
-.proof { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 22px; margin: 24px 0; }
-.proof h3 { margin-top: 16px; }
-.skill { font-weight: 700; margin: 0 0 4px; }
-.checklist { list-style: none; padding: 0; }
-.checklist li { padding-left: 26px; position: relative; margin-bottom: 8px; }
-.checklist li::before { content: ""; position: absolute; left: 0; top: 5px; width: 15px; height: 15px; border: 2px solid var(--muted-foreground); border-radius: 4px; }
-.checklist li.met::before { background: var(--success); border-color: var(--success); }
-.checklist li.met::after { content: ""; position: absolute; left: 5px; top: 8px; width: 5px; height: 9px; border: solid var(--card); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .status-msg { min-height: 26px; color: var(--success); font-weight: 600; }
+
+/* Step 3 · View your proof guide */
+main.guide { max-width: none; padding: 56px 140px 64px; }
+.guide-wrap, .download-wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.guide-head { display: flex; flex-direction: column; gap: 8px; }
+.guide-head p, .guide-head h1 { margin: 0; }
+.guide-head .intro { color: var(--ink-soft); }
+.guide-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 40px; display: flex; flex-direction: column; gap: 22px; box-shadow: var(--shadow-proof); }
+.guide-card > p, .guide-card > h2, .guide-card > h3 { margin: 0; }
+.guide-title { font: 700 30px/42px var(--font-body); font-variation-settings: normal; color: var(--foreground); text-wrap: balance; overflow-wrap: anywhere; }
+.guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 400px)); gap: 20px; }
+.guide-cell { display: flex; flex-direction: column; gap: 6px; }
+.guide-cell h3, .guide-sub { font: 700 16px/26px var(--font-body); font-variation-settings: normal; color: var(--foreground); margin: 0; }
+.guide-cell p { max-width: none; margin: 0; color: var(--ink-soft); white-space: pre-line; overflow-wrap: anywhere; }
+.tip-box { height: 120px; max-width: none; margin: 0; padding: 0 12px; display: flex; align-items: center; justify-content: center; text-align: center; border: 1.5px dashed var(--input); border-radius: var(--radius-md); font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
+.conn-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.conn-table th { background: var(--proof-ground); text-align: left; padding: 10px 14px; font: 600 12px/16px var(--font-body); letter-spacing: .96px; text-transform: uppercase; color: var(--muted-foreground); }
+.conn-table td { background: var(--card); border-top: 1px solid var(--border); padding: 10px 14px; vertical-align: top; font-size: 14px; line-height: 21px; color: var(--foreground); overflow-wrap: anywhere; }
+.conn-table th:first-child, .conn-table td:first-child { width: 60%; }
+
+/* Step 4 · Copy & download */
+main.download { max-width: none; padding: 56px 210px 64px; }
+.download-wrap { max-width: 760px; }
+.download-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.download-top h1 { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--muted-foreground); margin: 0; }
+.proof-card { background: var(--card); border: 0; border-radius: var(--radius-xl); padding: 44px; display: flex; flex-direction: column; gap: 22px; box-shadow: var(--shadow-proof); }
+.proof-card > p, .proof-card > h2 { margin: 0; }
+.proof-title { font: 600 36px/42px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--primary); text-wrap: balance; overflow-wrap: anywhere; }
+.proof-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.proof-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.proof-cell h3 { font: 600 20px/26px var(--font-display); font-variation-settings: "SOFT" 0, "WONK" 1; color: var(--success); margin: 0; }
+.proof-cell p { max-width: none; margin: 0; color: var(--ink-soft); white-space: pre-line; overflow-wrap: anywhere; }
+.reminder { max-width: none; margin: 0; color: var(--foreground); }
+.download-actions .actions { margin: 0; }
+.download-actions .status-msg { min-height: 0; margin: 12px 0 0; max-width: none; }
+.download-actions .status-msg:empty { margin: 0; }
+.made-with { max-width: none; margin: 0; text-align: center; font-size: 14px; line-height: 21px; color: var(--muted-foreground); }
 
 .loading { display: inline-flex; gap: 8px; align-items: center; color: var(--muted-foreground); }
 .loading::before { content: ""; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--foreground); border-radius: 50%; animation: spin .8s linear infinite; }
@@ -188,7 +218,10 @@ button.link { height: auto; padding: 0; border: 0; background: none; color: var(
 
 @media (max-width: 960px) {
   .review-layout, .form-layout { grid-template-columns: 1fr; }
-  main.wide, main.wide.form { padding: 32px 24px 48px; }
+  main.wide, main.wide.form, main.guide, main.download { padding: 32px 24px 48px; }
+  .guide-grid, .proof-cols { grid-template-columns: 1fr; }
+  .guide-card, .proof-card { padding: 24px; }
+  .proof-title { font-size: 28px; line-height: 34px; }
   .progress { padding: 16px 24px; flex-direction: column; align-items: flex-start; }
   .top { padding: 14px 24px; }
 }
