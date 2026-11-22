@@ -30,6 +30,8 @@ Without an API key, Proof uses its built-in rule-based engine. It matches the pe
 
 To enable Claude suggestions, set `ANTHROPIC_API_KEY` in your shell or deployment environment before starting the app. You can optionally set `MODEL`; it defaults to `claude-sonnet-5-5`.
 
+On Vercel: Project → Settings → Environment Variables → add `ANTHROPIC_API_KEY` for **Production** (and Preview if you test preview links), then redeploy, because a new variable only applies to new deployments. To tell whether the AI is running: on the review screen, AI-made suggestions show the line "Suggested by AI, using only your words. Check every line." If the AI failed or broke a guardrail, a note above the suggestions says they come from matching your own words. If neither appears, the key isn't set and the rule-based engine is answering. The function logs (Vercel → Logs) show `AI call failed: …` or `AI output failed guardrails: …` with the reason, and never include the person's answers. Locally, `npm run dev` prints "AI mode: on (key found)" or "AI mode: off".
+
 ```sh
 # PowerShell
 $env:ANTHROPIC_API_KEY = "your-key"
