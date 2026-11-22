@@ -2,7 +2,7 @@
 
 Proof helps UX-trained career changers turn one piece of past, non-UX work into evidence an employer can judge, using only their own words.
 
-The flow is: Welcome → describe past work in four fields (role, situation, what you did, what changed) → review proof candidates → fill gaps and complete a privacy check → copy the result or download it as a Word document.
+The flow is: Home → describe past work in four fields (role, situation, what you did, what changed) → review suggested connections → view the proof guide → copy it, or download it as a PDF (a print-styled preview that opens the browser's print dialog; choose "Save as PDF").
 
 ## Setup
 
@@ -46,4 +46,4 @@ Keep API keys out of source control, `.env` files committed to the repository, a
 - No accounts, saved progress, or cross-session persistence.
 - No PDF export, sharing links, analytics, feedback, or mentor collaboration.
 - AI assistance requires an Anthropic API key; the app remains usable without one.
-- The Word export loads `docx` version 9.5.1 from jsDelivr when a user requests a download, so that action needs internet access.
+- The PDF download uses the browser's own print dialog (`window.print()`), so it needs no extra library or internet access. The page's fonts still load from Google Fonts.

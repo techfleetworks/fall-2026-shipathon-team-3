@@ -206,17 +206,16 @@ function openFailedModal(retry) {
   });
 }
 
-// 7. Your guide couldn’t be downloaded.
-function openDownloadFailedModal(retry, returnTo) {
+// 7. Your guide couldn’t be downloaded: printing the preview threw. "Back to guide" returns to Step 4.
+function openDownloadFailedModal(retry, back) {
   openModal({
     label: MODAL_LABEL,
     heading: "Your guide couldn’t be downloaded",
     content: [modalMsg("The download didn’t finish. Your guide is still available in this session. Retry, or go back and copy it instead.")],
     buttons: [
       { text: "Try again", primary: true, onclick: retry },
-      { text: "Back to guide", escape: true },
+      { text: "Back to guide", escape: true, onclick: back },
     ],
-    returnTo,
   });
 }
 
@@ -647,100 +646,6 @@ function proofAsText() {
   return lines.join("\n").trim() + "\n";
 }
 
-// ---------- Word export ----------
-// The docx library loads only when someone downloads, so the page stays fast.
-const DOCX_URL = "https://cdn.jsdelivr.net/npm/docx@9.5.1/dist/index.iife.js";
-let docxPromise = null;
-function loadDocx() {
-  if (window.docx) return Promise.resolve(window.docx);
-  docxPromise ??= new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = DOCX_URL;
-    s.onload = () => (window.docx ? resolve(window.docx) : reject(new Error("docx missing")));
-    s.onerror = () => { docxPromise = null; reject(new Error("docx failed to load")); };
-    document.head.append(s);
-  });
-  return docxPromise;
-}
-
-function proofParts() {
-  const gaps = allGaps().filter((q) => state.gapAnswers[q]?.trim())
-    .map((q) => ({ heading: q, text: state.gapAnswers[q].trim() }));
-  return {
-    title: state.answers[0].trim() ? `Proof from my past work: ${state.answers[0].trim().replace(/[.!]+$/, "")}` : "Proof from my past work",
-    sections: storySections(),
-    items: addedCandidates().map((c) => ({
-      skill: c.ux_skill_label,
-      format: FORMAT_LABELS[c.could_become] || "",
-      quote: `“${c.quote}”`,
-      why: explanationOf(c).trim(),
-    })),
-    gaps,
-  };
-}
-
-async function proofAsDocx() {
-  const d = await loadDocx();
-  const p = proofParts();
-  const INK = "1D2B4F";
-  const paras = (text) => text.split(/\n+/).filter((t) => t.trim())
-    .map((t) => new d.Paragraph({ children: [new d.TextRun(t.trim())] }));
-  const heading = (t, level = d.HeadingLevel.HEADING_1) => new d.Paragraph({ heading: level, children: [new d.TextRun(t)] });
-
-  const children = [
-    new d.Paragraph({ heading: d.HeadingLevel.TITLE, children: [new d.TextRun(p.title)] }),
-  ];
-  for (const [label, text] of p.sections) children.push(heading(label), ...paras(text));
-  children.push(heading("How my work connects to UX skills"));
-  for (const item of p.items) {
-    children.push(
-      new d.Paragraph({ children: [new d.TextRun({ text: "Skill it shows: ", bold: true }), new d.TextRun(item.skill)] }),
-      new d.Paragraph({
-        spacing: { before: 240, after: 240 },
-        indent: { left: 240 },
-        border: { left: { style: d.BorderStyle.SINGLE, size: 24, color: "C9D23A", space: 10 } },
-        shading: { type: d.ShadingType.CLEAR, color: "auto", fill: "F6F8C8" },
-        children: [new d.TextRun({ text: item.quote, italics: true, size: 26, font: "Georgia" })],
-      }),
-      heading("Why it matters"),
-      ...paras(item.why));
-    if (item.format) children.push(new d.Paragraph({ children: [new d.TextRun({ text: item.format, italics: true, color: "545E74" })] }));
-  }
-  if (p.gaps.length) {
-    children.push(heading("More detail"));
-    for (const g of p.gaps) children.push(heading(g.heading, d.HeadingLevel.HEADING_2), ...paras(g.text));
-  }
-
-  const doc = new d.Document({
-    creator: "Proof from past work",
-    title: p.title,
-    styles: {
-      default: { document: { run: { font: "Arial", size: 22, color: "222222" }, paragraph: { spacing: { after: 120, line: 300 } } } },
-      paragraphStyles: [
-        { id: "Title", name: "Title", basedOn: "Normal", next: "Normal", quickFormat: true,
-          run: { font: "Arial", size: 40, bold: true, color: INK },
-          paragraph: { spacing: { before: 0, after: 200 }, keepNext: true } },
-        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-          run: { font: "Arial", size: 28, bold: true, color: INK },
-          paragraph: { spacing: { before: 320, after: 100 }, keepNext: true, outlineLevel: 0 } },
-        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-          run: { font: "Arial", size: 23, bold: true, color: INK },
-          paragraph: { spacing: { before: 200, after: 60 }, keepNext: true, outlineLevel: 1 } },
-      ],
-    },
-    sections: [{
-      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
-      children,
-    }],
-  });
-  return d.Packer.toBlob(doc);
-}
-
-function fileSlug() {
-  const base = (state.answers[0].trim() || state.answers[1] || "my-proof").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-  return `${base || "my-proof"}.docx`;
-}
-
 // ---------- Steps 3 and 4: the guide, then copy & download ----------
 const SKILL_ATTRIBUTION = "Skill names: Tech Fleet Skills & Practices Framework, CC BY 4.0";
 const TIP = "Next: gather notes or a checklist, if you have them. Don’t invent missing evidence.";
@@ -792,22 +697,58 @@ function renderGuide() {
   3, "guide");
 }
 
-// Word export. If it throws, the "Your guide couldn’t be downloaded" pop-up offers a retry.
-async function downloadGuide(btn, status) {
-  btn.disabled = true;
-  status.textContent = "Preparing your Word file…";
+// ---------- Guide document preview + PDF ----------
+// "Download" shows the printable page, then opens the browser's print dialog (choose "Save as PDF").
+// The print CSS in styles.css hides everything except the white document page.
+async function printGuide() {
+  const prevTitle = document.title;
+  const restore = () => { document.title = prevTitle; };
   try {
-    const blob = await proofAsDocx();
-    const filename = fileSlug();
-    const a = h("a", { href: URL.createObjectURL(blob), download: filename });
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    status.textContent = `Downloaded ${filename}. It opens in Word, Google Docs and Pages.`;
+    await document.fonts?.ready;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    document.title = guideTitle(); // becomes the default PDF file name
+    window.addEventListener("afterprint", restore, { once: true });
+    window.print();
   } catch {
-    status.textContent = "";
-    btn.disabled = false; // so focus can return to the button when the pop-up closes
-    openDownloadFailedModal(() => downloadGuide(btn, status), btn);
-  } finally { btn.disabled = false; }
+    window.removeEventListener("afterprint", restore);
+    restore();
+    openDownloadFailedModal(() => printGuide(), () => renderDownload());
+  }
+}
+
+function renderPreview() {
+  const role = state.answers[0].trim();
+  const [, problem, did] = state.answers.map((a) => a.trim());
+  const cell = (heading, text) => text ? h("div", { class: "doc-cell" }, h("h3", {}, heading), h("p", {}, text)) : null;
+
+  show(h("div", { class: "preview-wrap" },
+    h("div", { class: "preview-head" },
+      h("div", { class: "preview-bar" },
+        h("button", { class: "sm", onclick: renderDownload }, "Back to copy & download"),
+        h("p", { class: "label doc-label" }, "Document preview / 1 page")),
+      h("h1", {}, "Your guide, ready to keep."),
+      h("p", { class: "intro" }, "Your guide brings together your experience and the connections you added. Build on it with evidence from your real work.")),
+    h("article", { class: "doc-page", "aria-label": "Guide document" },
+      h("div", { class: "doc-identity" },
+        h("p", { class: "label doc-label" }, "UX proof-building guide"),
+        h("h2", { class: "doc-title" }, guideTitle()),
+        role ? h("p", { class: "doc-background" }, `Background: ${role}`) : null),
+      h("div", { class: "doc-cols" }, cell("The problem", problem), cell("What I did", did)),
+      h("div", { class: "doc-connections" },
+        h("h3", { class: "doc-heading" }, "UX connections to build on"),
+        h("ul", { class: "doc-list" }, addedCandidates().map((c, i) => h("li", { class: "conn-box" },
+          h("span", { class: "conn-num" }, String(i + 1).padStart(2, "0")),
+          h("div", { class: "conn-text" },
+            h("p", { class: "conn-did" }, `“${c.quote}”`),
+            h("p", { class: "conn-skill" }, c.ux_skill_label)))))),
+      h("div", { class: "doc-foot" },
+        h("div", { class: "doc-divider" }),
+        h("p", { class: "doc-credit" }, `Made with ${PRODUCT_NAME}. ${SKILL_ATTRIBUTION}.`),
+        h("div", { class: "doc-foot-row" },
+          h("p", { class: "label doc-label" }, "UX guide"),
+          h("p", { class: "label doc-label" }, "01 / 01")))),
+    h("p", { class: "preview-foot" }, role ? `Your guide · ${role}` : "Your guide")),
+  null, "preview", { noTop: true });
 }
 
 function renderDownload() {
@@ -833,7 +774,7 @@ function renderDownload() {
               try { await navigator.clipboard.writeText(proofAsText()); status.textContent = "Copied. Paste it into your portfolio notes."; }
               catch { status.textContent = "Copy didn’t work in this browser. Use Download instead."; }
             } }, "Copy guide"),
-          h("button", { class: "primary", onclick: (ev) => downloadGuide(ev.currentTarget, status) }, "Download"))),
+          h("button", { class: "primary", onclick: () => { renderPreview(); printGuide(); } }, "Download"))),
       status),
     h("p", { class: "made-with" }, `Made with Proof. ${SKILL_ATTRIBUTION}.`)),
   4, "download", { noTop: true });
